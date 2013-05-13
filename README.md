@@ -39,8 +39,11 @@ function isPrime(n) {
 
 var n = 1000000;
 
-if (n % 2 == 0) ++n;
-n += 2;
+if (n % 2 == 0) {
+    ++n;
+} else {
+    n += 2;
+}
 
 from.range(n, Infinity, 2).where('@($)', isPrime).take(10).each('console.log($)');
 ```
