@@ -1,2 +1,2 @@
-fromjs
+from.js
 ======
