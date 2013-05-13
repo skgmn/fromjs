@@ -24,3 +24,23 @@ You can reference documents at the site to get information about from.js, but be
 * groupBy(), groupBy2(), groupBy3(), groupBy4() were united into groupBy()
 
 Reference documents will be migrated and updated to here soon.
+
+## Simple example
+
+Below is an node.js example that print 10 prime numbers bigger than *n*. How simple it is! ;)
+
+```javascript
+var from = require('fromjs');
+
+function isPrime(n) {
+    return n == 2 ||
+        !from.range(3, n + 1, 2).takeWhile('$ * $ <= @', n).any('@ % $ == 0', n);
+}
+
+var n = 1000000;
+
+if (n % 2 == 0) ++n;
+n += 2;
+
+from.range(n, Infinity, 2).where('@($)', isPrime).take(10).each('console.log($)');
+```
