@@ -12,6 +12,11 @@
     "dependencies": {
     },
     "main": "./from.js",
+    "homepage": "https://github.com/suckgamoni/fromjs",
+    "bugs": {
+        "url": "https://github.com/suckgamoni/fromjs/issues",
+        "email": "suckgamony@gmail.com"
+    },
     "repository": {
         "type": "git",
         "url": "git://github.com/suckgamoni/fromjs.git"
