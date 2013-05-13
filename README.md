@@ -34,7 +34,7 @@ var from = require('fromjs');
 
 function isPrime(n) {
     return n == 2 ||
-        !from.range(3, n + 1, 2).takeWhile('$ * $ <= @', n).any('@ % $ == 0', n);
+        !from.range(3, n, 2).takeWhile('$ * $ <= @', n).any('@ % $ == 0', n);
 }
 
 var n = 1000000;
