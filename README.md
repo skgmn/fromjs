@@ -16,7 +16,7 @@ This project is currently on working on migration from http://fromjs.codeplex.co
 You can reference documents at the site to get information about from.js, but before doing so, you have to be notified that several things have been changed.
 
 * now can be installed with `npm install fromjs`
-* `require('from');` → `var from = require('fromjs');` on node.js
+* `require('./from');` → `var from = require('fromjs');` on node.js
 * *$from(something)* → *from(something)*
 * *$empty()* → *from()*
 * *$range(1, 10, 2)* → *from.range(1, 10, 2)*
