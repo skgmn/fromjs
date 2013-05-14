@@ -120,8 +120,8 @@ console.log(average);
 
 ## Lambda expression
 
-It will be so tiring work to write a new function every time. It can be solved by using lambda expression.
-Its format is almost same with C#'s.
+It will be so tiring work to write every nested function every time. It can be evaded by using lambda expression.
+Its format is almost same as C#'s.
 
 Here's an example.
 
@@ -211,10 +211,28 @@ var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ];
 from(numbers).where('$ < 5').each('console.log($)');
 ```
 
+As you will see, most predicator functions have similar arguments list (except comparers).
+In most cases, the first argument means 'value', the second means 'key', and the last means 'external argument'.
+(This is the most different part from .NET)
+You can habitually consider $ as a value, $$ as a key, and @ as an external argument.
+
+## External argument
+
+Because lambda expressions are given as String, any variables in the current context can't be referenced. For example,
+
+```javascript
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+var n = 5;
+from(numbers).where('$ < n').each('console.log($)');
+```
+
+this code won't work. How can it be get around?
+Most predicator functions provided 
+
 ## Document not yet completed
 
 This project is currently on working on migration from http://fromjs.codeplex.com/
-You can reference documents at the site to get information about from.js, but before doing so, you have to be notified that several things have been changed.
+You can refer to documents at the site to get information about from.js, but before doing so, you have to be notified that several things have been changed.
 
 * now can be installed with `npm install fromjs`
 * `require('./from');` → `var from = require('fromjs');` on node.js
