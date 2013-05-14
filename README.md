@@ -242,7 +242,7 @@ from(numbers).where('$ < @', n).each('console.log($)');
 
 There are still more chances to shorten lambda expressions.
 
-* 'Dot' can be omitted between $,$$,@ and following keyword. For instance, _$length_ is processed identically as _$length_.
+* 'Dot' can be omitted between $,$$,@ and following keyword. For instance, _$length_ will be processed identically as _$.length_.
 
 ```javascript
 // Print fruit names ordered by its length
