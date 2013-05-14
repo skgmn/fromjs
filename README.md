@@ -226,8 +226,39 @@ var n = 5;
 from(numbers).where('$ < n').each('console.log($)');
 ```
 
-this code won't work. How can it be get around?
-Most predicator functions provided 
+this code won't work. Then how can it be get around?
+Most predicator functions provided by from.js support external argument.
+If an object is given as an external argument, it can be referenced in lambda expression.
+
+The example above should be like this:
+
+```javascript
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+var n = 5;
+from(numbers).where('$ < @', n).each('console.log($)');
+```
+
+## Some more conveniences on lambda expression
+
+There are still more chances to shorten lambda expressions.
+
+1. 'Dot' can be omitted between $,$$,@ and following keyword. For instance, _$length_ is processed identically as _$length_.
+
+```javascript
+// Print fruit names ordered by its length
+var fruits = [ "apple", "passionfruit", "banana", "mango",
+    "orange", "blueberry", "grape", "strawberry" ];
+from(fruits).orderBy('$length').each('console.log($)');
+```
+
+2. Referencing array of $,$$,@ can be shorten like this: @[3] --> @3
+
+```javascript
+var fruits = [ "apple", "passionfruit", "banana", "mango",
+    "orange", "blueberry", "grape", "strawberry" ];
+var appleOrBanana = from(fruits).count('$ == @0 || $ == @1', ['apple', 'banana']);
+console.log(appleOrBanana); // 2
+```
 
 ## Document not yet completed
 
