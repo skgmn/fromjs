@@ -146,17 +146,25 @@ arg1 => arg1 * 3
 Now let's apply it into real JavaScript code.
 
 ```javascript
-var array = [1, 2, 3, 4];
-from(array).each(function (value, key) {
-    console.log('Value ' + value + ' at index ' + key);
-});
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+
+from(numbers)
+    .where(function (value) {
+        return value < 5;
+    })
+    .each(function (value) {
+        console.log(value);
+    });
 ```
 
 The example above can be re-written as below.
 
 ```javascript
-var array = [1, 2, 3, 4];
-from(array).each('(value, key) => console.log("Value " + value + " at index " + key)');
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+
+from(numbers)
+    .where('value => value < 5')
+    .each('value => console.log(value)');
 ```
 
 ## Omitting argument list
@@ -235,6 +243,8 @@ The example above should be like this:
 ```javascript
 var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
 var n = 5;
+from(numbers).where('(value, key, arg) => value < arg', n).each('value => console.log(value)');
+// or simply
 from(numbers).where('$ < @', n).each('console.log($)');
 ```
 
