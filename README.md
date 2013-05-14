@@ -54,6 +54,30 @@ from(o).each(function (value, key) {
 // bar = 2
 ```
 
+An iteration can be stopped by returning false.
+
+```javascript
+var array = [1, 2, 3, 4];
+from(array).each(function (value, key) {
+    console.log('Value ' + value + ' at index ' + key);
+    return value != 2;
+});
+
+// Value 1 at index 0
+// Value 2 at index 1
+```
+
+_broken_ parameter can be used to investigate either the iteration was broken.
+
+```javascript
+var array = [1, 2, 3, 4];
+var broken = from(array).each(function (value, key) {
+    return value != 2;
+}).broken;
+
+console.log(broken); // true
+```
+
 ## Basic query
 
 **Printing numbers less than 5 in an array**
@@ -87,16 +111,107 @@ from(numbers)
 var grades = [ 59, 82, 70, 56, 92, 98, 85 ];
       
 var average = from(grades)
-                .orderByDesc(function (value) {
-                    return value;
-                })
+                .orderByDesc()
                 .take(3)
                 .average();
                 
 console.log(average);
 ```
 
-## Not yet completed
+## Lambda expression
+
+It will be so tiring work to write a new function every time. It can be solved by using lambda expression.
+Its format is almost same with C#'s.
+
+Here's an example.
+
+```javascript
+function (arg1, arg2, arg3) {
+    return arg1 * arg2 + arg3;
+}
+```
+
+The function given above can be re-written as below using lambda expression.
+
+```
+(arg1, arg2, arg3) => arg1 * arg2 + arg3
+```
+
+Parentheses can be omitted when it has only one argument.
+
+```
+arg1 => arg1 * 3
+```
+
+Now let's apply it into real JavaScript code.
+
+```javascript
+var array = [1, 2, 3, 4];
+from(array).each(function (value, key) {
+    console.log('Value ' + value + ' at index ' + key);
+});
+```
+
+The example above can be re-written as below.
+
+```javascript
+var array = [1, 2, 3, 4];
+from(array).each('(value, key) => console.log("Value " + value + " at index " + key)');
+```
+
+## Omitting argument list
+
+Lambda expression can be shorten more by omitting argument list.
+But how can it be used if there's no argument list?
+from.js provides several abbreviations which can be used in this case.
+
+| Abbreviation | Meaning                          |
+| ------------ | -------------------------------- |
+| #n           | The _n_-th argument (zero based) |
+| $            | The first argument (same as #0)  |
+| $$           | The second argument (same as #1) |
+| @            | The last argument                |
+
+For example,
+
+```
+(arg0, arg1, arg2, arg3) => arg0 * arg1 + arg2 * arg3
+```
+
+the expression above can be shorten as below.
+
+```
+#0 * #1 + #2 * #3
+```
+
+or
+
+```
+$ * $$ + #2 * @
+```
+
+Let's apply it into JavaScript code.
+
+```javascript
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+
+from(numbers)
+    .where(function (value) {
+        return value < 5;
+    })
+    .each(function (value) {
+        console.log(value);
+    });
+```
+
+The sample above can be shorten as below.
+
+```javascript
+var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
+from(numbers).where('$ < 5').each('console.log($)');
+```
+
+## Document not yet completed
 
 This project is currently on working on migration from http://fromjs.codeplex.com/
 You can reference documents at the site to get information about from.js, but before doing so, you have to be notified that several things have been changed.
