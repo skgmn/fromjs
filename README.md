@@ -170,7 +170,7 @@ from(numbers)
 ## Omitting argument list
 
 Lambda expression can be shorten more by omitting argument list.
-But how can it be used if there's no argument list?
+But how can it be used without any argument specified?
 from.js provides several abbreviations which can be used in this case.
 
 | Abbreviation | Meaning                          |
