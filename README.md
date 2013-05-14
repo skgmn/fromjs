@@ -231,7 +231,7 @@ Because lambda expressions are given as String, any variables in the current con
 ```javascript
 var numbers = [ 5, 4, 1, 3, 9, 8, 6, 7, 2, 0 ]; 
 var n = 5;
-from(numbers).where('$ < n').each('console.log($)');
+from(numbers).where('value => value < n').each('value => console.log(value)');
 ```
 
 this code won't work. Then how can it be get around?
