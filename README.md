@@ -270,17 +270,85 @@ var appleOrBanana = from(fruits).count('$ == @0 || $ == @1', ['apple', 'banana']
 console.log(appleOrBanana); // 2
 ```
 
-## Document not yet completed
+## Empty iterable
 
-This project is currently on working on migration from http://fromjs.codeplex.com/
-You can refer to documents at the site to get information about from.js, but before doing so, you have to be notified that several things have been changed.
+ Sometimes it is needed to use an empty iterable object. In this case, simply call from() without any argument,
 
-* now can be installed with `npm install fromjs`
-* `require('./from');` → `var from = require('fromjs');` on node.js
-* *$from(something)* → *from(something)*
-* *$empty()* → *from()*
-* *$range(1, 10, 2)* → *from.range(1, 10, 2)*
-* aggregate() and aggregateSeed() were united into aggregate()
-* groupBy(), groupBy2(), groupBy3(), groupBy4() were united into groupBy()
+```javascript
+var names1 = [ "Hartono, Tommy" ];
+var names2 = [ "Adams, Terry", "Andersen, Henriette Thaulow", "Hedlund, Magnus", "Ito, Shu" ];
+var names3 = [ "Solanki, Ajay", "Hoeing, Helge", "Andersen, Henriette Thaulow", "Potra, Cristina", "Iallo, Lucio" ];
 
-Reference documents will be completely migrated and updated to here soon.
+var namesList = [ names1, names2, names3 ];
+
+// Only include arrays that have four or more elements
+from(namesList)
+    .aggregate(from(), "(current, next) => next.length > 3 ? current.union(next) : current")
+    .each("console.log($)");
+    
+/*
+ This code produces the following output:
+
+ Adams, Terry
+ Andersen, Henriette Thaulow
+ Hedlund, Magnus
+ Ito, Shu
+ Solanki, Ajay
+ Hoeing, Helge
+ Potra, Cristina
+ Iallo, Lucio
+*/
+```
+
+### Ranged iterable
+
+ It is able to generate a ranged iterable by using from.range().
+ 
+```javascript
+from.range(n)                // from 0 to n - 1
+from.range(start, end)       // from start to end - 1
+from.range(start, end, step) // from start to end - 1, increasing by step
+```
+
+```javascript
+from.range(4)
+    .select("$ * $")
+    .each("console.log($)");
+
+/*
+ This code produces the following output:
+ 0
+ 1
+ 4
+ 9
+*/
+```
+
+```javascript
+// Generate a sequence of three integers starting at 4, 
+// and then select their squares.
+from.range(4, 7)
+    .select("$ * $")
+    .each("console.log($)");
+
+/*
+ This code produces the following output:
+ 16
+ 25
+ 36
+*/
+```
+
+```javascript
+from.range(3, 13, 3)
+    .select("$ * $")
+    .each("console.log($)");
+
+/*
+ This code produces the following output:
+ 9
+ 36
+ 81
+ 144
+*/
+```
