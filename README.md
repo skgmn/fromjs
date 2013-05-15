@@ -300,7 +300,7 @@ from(namesList)
 */
 ```
 
-### Ranged iterable
+## Ranged iterable
 
  It is able to generate a ranged iterable by using from.range().
  
@@ -351,4 +351,22 @@ from.range(3, 13, 3)
  81
  144
 */
+```
+
+## Supported queries
+
+
+
+## Some practical examples
+
+A function which determine whether the given _n_ is prime number or not.
+
+```javascript
+function isPrime(n) {
+    return n == 2 ||
+        (n % 2 == 1 &&
+        !from.range(3, n, 2)
+            .takeWhile("$ * $ <= @", n)
+            .any("@ % $ == 0", n));
+}
 ```
