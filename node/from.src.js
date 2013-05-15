@@ -1611,29 +1611,29 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 };
 
 RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
+    var rs;
+    if (typeof(resultSelector) == "string") {
+        var splited = [];
+	    var hint = lambdaGetHint(resultSelector, 5, splited);
+	    var v, list = [];
+
+	    switch (hint[0]) {
+	    case 0: case 1: v = this.lambdaAt('@d', '@i', '@l'); break;
+	    default: list.push("(@V=" + this.lambdaAt('@d', '@i', '@l') + ")"); v = "@V"; break;
+	    }
+
+	    list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
+
+	    rs = "(" + list.join(",") + ")";
+    }
+    else {
+	    rs = "@rs(" + this.lambdaAt('@d', '@i', '@l') + ",$,@i,$$,@a)";
+    }
+
 	var self = this;
 	function iterator(proc, arg0) {
 		var s = self.data;
 		var l = s.length;
-
-	    var rs;
-	    if (typeof(resultSelector) == "string") {
-	        var splited = [];
-		    var hint = lambdaGetHint(resultSelector, 5, splited);
-		    var v, list = [];
-
-		    switch (hint[0]) {
-		    case 0: case 1: v = self.lambdaAt('@d', '@i', l); break;
-		    default: list.push("(@V=" + self.lambdaAt('@d', '@i', l) + ")"); v = "@V"; break;
-		    }
-
-		    list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
-
-		    rs = "(" + list.join(",") + ")";
-	    }
-	    else {
-		    rs = "@rs(" + self.lambdaAt('@d', '@i', l) + ",$,@i,$$,@a)";
-	    }
 
 		var procStr;
 		if (typeof(proc) == "string") {
@@ -1659,7 +1659,7 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 			procStr = "@p(" + rs + ",@k++,@a0)";
 		}
 
-		this.broken = $from(second).each("@i>=" + l + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, p: proc, rs: resultSelector}).broken;
+		this.broken = $from(second).each("@i>=@l?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, l: l, p: proc, rs: resultSelector}).broken;
 		return this;
 	}
 
