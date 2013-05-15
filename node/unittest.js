@@ -71,6 +71,13 @@ exports['test4'] = function (test) {
     test.done();
 };
 
+exports['test5'] = function (test) {
+    var s = from('asdf').reverse().toString();
+    test.ok(s == 'fdsa');
+    
+    test.done();
+};
+
 exports['range() test'] = function (test) {
     var squares = from.range(4).select("$ * $").toArray();
     test.ok(

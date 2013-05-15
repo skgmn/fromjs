@@ -1527,27 +1527,28 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
-// StringIterable
+// RandomAccessIterable
 //
 
-function StringIterable(str) {
-	this.str = str;
+function RandomAccessIterable(data) {
+	this.data = data;
 }
-extend(Iterable, StringIterable);
+extend(Iterable, RandomAccessIterable);
 
-StringIterable.prototype.each = function(proc, _a) {
-	var s = this.str;
+RandomAccessIterable.prototype.each = function(proc, _a) {
+	var s = this.data;
 	
 	if (typeof(proc) == "function") {
 		this.broken = false;
 		for (var i = 0, c = s.length; i < c; ++i) {
-			if (proc(s.charAt(i), i, _a) === false) {
+			if (proc(this.at(i), i, _a) === false) {
 				this.broken = true;
 				break;
 			}
 		}
 	} else {
-		var f = cache.get("each_s", proc);
+	    var dt = this._dataType;
+		var f = cache.get("each_" + dt, proc);
 
 		if (!f) {
 		    var splited = [];
@@ -1555,12 +1556,12 @@ StringIterable.prototype.each = function(proc, _a) {
 			var defV, v;
 			
 			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "s.charAt(i)"; break;
-			default: defV = "var v=s.charAt(i);"; v = "v"; break;
+			case 0: case 1: defV = ""; v = this.lambdaAt('s', 'i', 'c'); break;
+			default: defV = "var v=" + this.lambdaAt('s', 'i', 'c') + ";"; v = "v"; break;
 			}
 
 			f = new Function(alias, "s", "a", "for(var i=0,c=s.length;i<c;++i){" + defV + "if((" + lambdaJoin(splited, v, "i", "a") + ")===false){return true;}}return false;");
-			cache.set("each_s", proc, f);
+			cache.set("each_" + dt, proc, f);
 		}
 
 		this.broken = f($from, s, _a);
@@ -1569,32 +1570,27 @@ StringIterable.prototype.each = function(proc, _a) {
 	return this;
 };
 
-StringIterable.prototype.at = function(index) {
-	return this.str.charAt(index);
-};
-
-StringIterable.prototype.count = function(pred, arg) {
+RandomAccessIterable.prototype.count = function(pred, arg) {
 	if (!pred) {
-		return this.str.length;
+		return this.data.length;
 	}
 	else {
 		return Iterable.prototype.count.call(this, pred, arg);
 	}
 };
 
-StringIterable.prototype.any = function (pred, arg) {
+RandomAccessIterable.prototype.any = function (pred, arg) {
     if (!pred) {
-        return this.str.length > 0;
+        return this.data.length > 0;
     } else {
 		return Iterable.prototype.any.call(this, pred, arg);
     }
 };
 
-StringIterable.prototype.first = function(pred, arg) {
-	var s = this.str;
+RandomAccessIterable.prototype.first = function(pred, arg) {
 	if (!pred) {
-		if (s.length > 0) {
-			return s.charAt(0);
+		if (this.data.length > 0) {
+			return this.at(0);
 		}
 	}
 	else {
@@ -1602,12 +1598,11 @@ StringIterable.prototype.first = function(pred, arg) {
 	}
 };
 
-StringIterable.prototype.last = function(pred, arg) {
-	var s = this.str;
+RandomAccessIterable.prototype.last = function(pred, arg) {
 	if (!pred) {
-		var l = s.length;
+		var l = this.data.length;
 		if (l > 0) {
-			return s.charAt(l - 1);
+			return this.at(l - 1);
 		}
 	}
 	else {
@@ -1615,185 +1610,31 @@ StringIterable.prototype.last = function(pred, arg) {
 	}
 };
 
-StringIterable.prototype.reverse = function() {
-	return new StringReversedIterable(this.str);
-};
-
-StringIterable.prototype.toString = function (separator) {
-    if (separator) {
-        return Iterable.prototype.toString.call(this, separator);
-    } else {
-        return this.str;
-    }
-};
-
-StringIterable.prototype.toJSON = function() {
-	return quote(this.str);
-};
-
-StringIterable.prototype.zip = function(second, resultSelector, arg) {
-	var rs;
-	if (typeof(resultSelector) == "string") {
-	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 5, splited);
-		var v, list = [];
-
-		switch (hint[0]) {
-		case 0: case 1: v = "@d.charAt(@i)"; break;
-		default: list.push("(@V=@d.charAt(@i))"); v = "@V"; break;
-		}
-
-		list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
-
-		rs = "(" + list.join(",") + ")";
-	}
-	else {
-		rs = "@rs(@d.charAt(@i),$,@i,$$,@a)";
-	}
-
+RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 	var self = this;
 	function iterator(proc, arg0) {
-		var s = self.str;
+		var s = self.data;
+		var l = s.length;
 
-		var procStr;
-		if (typeof(proc) == "string") {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var v, k, list = [];
+	    var rs;
+	    if (typeof(resultSelector) == "string") {
+	        var splited = [];
+		    var hint = lambdaGetHint(resultSelector, 5, splited);
+		    var v, list = [];
 
-			switch (hint[0]) {
-			case 0: case 1: v = rs; break;
-			default: list.push("(@RS=" + rs + ")"); v = "@RS"; break;
-			}
+		    switch (hint[0]) {
+		    case 0: case 1: v = self.lambdaAt('@d', '@i', l); break;
+		    default: list.push("(@V=" + self.lambdaAt('@d', '@i', l) + ")"); v = "@V"; break;
+		    }
 
-			switch (hint[1]) {
-			case 0: case 1: k = "(@k++)"; break;
-			default: list.push("(@kk=@k++)"); k = "@kk"; break;
-			}
+		    list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
 
-			list.push(lambdaJoin(splited, v, k, "@a0"));
+		    rs = "(" + list.join(",") + ")";
+	    }
+	    else {
+		    rs = "@rs(" + self.lambdaAt('@d', '@i', l) + ",$,@i,$$,@a)";
+	    }
 
-			procStr = "(" + list.join(",") + ")";
-		}
-		else {
-			procStr = "@p(" + rs + ",@k++,@a0)";
-		}
-
-		this.broken = $from(second).each("@i>=" + s.length + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, p: proc, rs: resultSelector}).broken;
-		return this;
-	}
-
-	return new Iterable(iterator);
-};
-
-//
-// StringReversedIterable
-//
-
-function StringReversedIterable(str) {
-	this.str = str;
-}
-extend(StringIterable, StringReversedIterable);
-
-StringReversedIterable.prototype.each = function(proc, _a) {
-	var s = this.str;
-	
-	if  (typeof(proc) == "function") {
-		this.broken = false;
-		for (var c = s.length, i = c; i > 0; --i) {
-			if (proc(s.charAt(i), c - i, _a) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
-	else {
-		var f = cache.get("each_str", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var defV, defK, v, k;
-
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "s.charAt(i-1)"; break;
-			default: defV = "var v=s.charAt(i-1);"; v = "v"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: defK = ""; k = "(c-i)"; break;
-			default: defK = "var k=c-i;"; k = "k"; break;
-			}
-
-			f = new Function(alias, "s", "a", "for(var i=s.length,c=i;i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
-			cache.set("each_str", proc, f);
-		}
-
-		this.broken = f($from, s, _a);
-	}
-
-	return this;
-};
-
-StringReversedIterable.prototype.at = function(index) {
-	var s = this.str;
-	return s.charAt(s.length - index - 1);
-};
-
-StringReversedIterable.prototype.first = function(pred, arg) {
-	var s = this.str;
-	if (!pred) {
-		if (s.length > 0) {
-			return s.charAt(s.length - 1);
-		}
-	}
-	else {
-		return Iterable.prototype.first.call(this, pred, arg);
-	}
-};
-
-StringReversedIterable.prototype.last = function(pred, arg) {
-	var s = this.str;
-	if (!pred) {
-		if (s.length > 0) {
-			return s.charAt(0);
-		}
-	}
-	else {
-		return this.reverse().first(pred, arg);
-	}
-};
-
-StringReversedIterable.prototype.reverse = function() {
-	return new StringIterable(this.str);
-}
-
-StringReversedIterable.prototype.toString = Iterable.prototype.toString;
-
-StringReversedIterable.prototype.zip = function(second, resultSelector, arg) {
-	var s = this.str;
-	var l = s.length;
-
-	var rs;
-	if (typeof(resultSelector) == "string") {
-	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 5, splited);
-		var v, list = [];
-
-		switch (hint[0]) {
-		case 0: case 1: v = "@d.charAt(" + l + "-@i-1)"; break;
-		default: list.push("(@V=@d.charAt(" + l + "-@i-1))"); v = "@V"; break;
-		}
-
-		list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
-
-		rs = "(" + list.join(",") + ")";
-	}
-	else {
-		rs = "@rs(@d.charAt(" + l + "-@i-1],$,@i,$$,@a)";
-	}
-
-	var self = this;
-	function iterator(proc, arg0) {
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
@@ -1826,91 +1667,85 @@ StringReversedIterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
+// StringIterable
+//
+
+function StringIterable(str) {
+	this.data = str;
+}
+extend(RandomAccessIterable, StringIterable);
+
+StringIterable.prototype._dataType = 'string';
+
+StringIterable.prototype.lambdaAt = function (target, index) {
+    return target + '.charAt(' + index + ')';
+};
+
+StringIterable.prototype.at = function(index) {
+	return this.data.charAt(index);
+};
+
+StringIterable.prototype.reverse = function() {
+	return new StringReversedIterable(this.data);
+};
+
+StringIterable.prototype.toString = function (separator) {
+    if (separator) {
+        return Iterable.prototype.toString.call(this, separator);
+    } else {
+        return this.data;
+    }
+};
+
+StringIterable.prototype.toJSON = function() {
+	return quote(this.data);
+};
+
+//
+// StringReversedIterable
+//
+
+function StringReversedIterable(str) {
+	this.data = str;
+}
+extend(RandomAccessIterable, StringReversedIterable);
+
+StringReversedIterable.prototype._dataType = 'string_reversed';
+
+StringReversedIterable.prototype.lambdaAt = function (target, index, length) {
+    return target + '.charAt(' + length + '-' + index + '-1)';
+};
+
+StringReversedIterable.prototype.at = function(index) {
+    var s = this.data;
+	return s.charAt(s.length - index - 1);
+};
+
+StringReversedIterable.prototype.reverse = function() {
+	return new StringIterable(this.str);
+};
+
+StringReversedIterable.prototype.toJSON = function() {
+	return quote(this.toString());
+};
+
+//
 // ArrayIterable
 //
 
-function ArrayIterable(data) {
-	this.data = data;
+function ArrayIterable(array) {
+	this.data = array;
 }
-extend(Iterable, ArrayIterable);
+extend(RandomAccessIterable, ArrayIterable);
 
-ArrayIterable.prototype.each = function(proc, _a) {
-	var _d = this.data;
-	
-	if  (typeof(proc) == "function") {
-		this.broken = false;
-		for (var i = 0, c = _d.length; i < c; ++i) {
-			if (proc(_d[i], i, _a) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
-	else {
-		var f = cache.get("each_a", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var defV, v;
+ArrayIterable.prototype._dataType = 'array';
 
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "d[i]"; break;
-			default: defV = "var v=d[i];"; v = "v"; break;
-			}
-
-			f = new Function(alias, "d", "a", "for(var i=0,c=d.length;i<c;++i){" + defV + "if((" + lambdaJoin(splited, v, "i", "a") + ")===false){return true;}}return false;");
-			cache.set("each_a", proc, f);
-		}
-
-		this.broken = f($from, _d, _a);
-	}
-
-	return this;
+ArrayIterable.prototype.lambdaAt = function (target, index) {
+    return target + '[' + index + ']';
 };
 
 ArrayIterable.prototype.at = function(index) {
 	return this.data[index];
-};
-
-ArrayIterable.prototype.count = function(pred, arg) {
-	if (!pred) {
-		return this.data.length;
-	}
-	else {
-		return Iterable.prototype.count.call(this, pred, arg);
-	}
-};
-
-ArrayIterable.prototype.any = function (pred, arg) {
-    if (!pred) {
-        return this.data.length > 0;
-    } else {
-		return Iterable.prototype.any.call(this, pred, arg);
-    }
-};
-
-ArrayIterable.prototype.first = function(pred, arg) {
-	if (!pred) {
-		var data = this.data;
-		if (data.length > 0) {
-			return data[0];
-		}
-	}
-	else {
-		return Iterable.prototype.first.call(this, pred, arg);
-	}
-};
-
-ArrayIterable.prototype.last = function(pred, arg) {
-	if (!pred) {
-		var data = this.data;
-		if (data.length > 0) {
-			return data[data.length - 1];
-		}
-	}
-	else {
-		return this.reverse().first(pred, arg);
-	}
 };
 
 ArrayIterable.prototype.reverse = function() {
@@ -1931,60 +1766,34 @@ ArrayIterable.prototype.toJSON = function(track) {
 	return json;
 };
 
-ArrayIterable.prototype.zip = function(second, resultSelector, arg) {
-	var rs;
-	if (typeof(resultSelector) == "string") {
-	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 5, splited);
-		var v, list = [];
+//
+// ArrayReversedIterable
+//
 
-		switch (hint[0]) {
-		case 0: case 1: v = "@d[@i]"; break;
-		default: list.push("(@V=@d[@i])"); v = "@V"; break;
-		}
+function ArrayReversedIterable(array) {
+	this.data = array;
+}
+extend(RandomAccessIterable, ArrayReversedIterable);
 
-		list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
+ArrayReversedIterable.prototype._dataType = 'array_reversed';
 
-		rs = "(" + list.join(",") + ")";
-	}
-	else {
-		rs = "@rs(@d[@i],$,@i,$$,@a)";
-	}
-
-	var self = this;
-	function iterator(proc, arg0) {
-		var data = self.data;
-
-		var procStr;
-		if (typeof(proc) == "string") {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var v, k, list = [];
-
-			switch (hint[0]) {
-			case 0: case 1: v = rs; break;
-			default: list.push("(@RS=" + rs + ")"); v = "@RS"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: k = "(@k++)"; break;
-			default: list.push("(@kk=@k++)"); k = "@kk"; break;
-			}
-
-			list.push(lambdaJoin(splited, v, k, "@a0"));
-
-			procStr = "(" + list.join(",") + ")";
-		}
-		else {
-			procStr = "@p(" + rs + ",@k++,@a0)";
-		}
-
-		this.broken = $from(second).each("@i>=" + data.length + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: data, p: proc, rs: resultSelector}).broken;
-		return this;
-	}
-
-	return new Iterable(iterator);
+ArrayReversedIterable.prototype.lambdaAt = function (target, index, length) {
+    return target + '[' + length + '-' + index + '-1]';
 };
+
+ArrayReversedIterable.prototype.at = function(index) {
+    var array = this.data;
+	return array[array.length - index - 1];
+};
+
+ArrayReversedIterable.prototype.at = function(index) {
+	var d = this.data;
+	return d[d.length - index - 1];
+};
+
+ArrayReversedIterable.prototype.reverse = function() {
+	return new ArrayIterable(this.data);
+}
 
 //
 // ObjectIterable
@@ -2038,142 +1847,6 @@ ObjectIterable.prototype.reverse = function() {
 };
 
 ObjectIterable.prototype.toJSON = ArrayIterable.prototype.toJSON;
-
-//
-// ArrayReversedIterable
-//
-
-function ArrayReversedIterable(data) {
-	this.data = data;
-}
-extend(ArrayIterable, ArrayReversedIterable);
-
-ArrayReversedIterable.prototype.each = function(proc, _a) {
-	var _d = this.data;	
-	if  (typeof(proc) == "function") {
-		this.broken = false;
-		for (var c = _d.length, i = c; i > 0; --i) {
-			if (proc(_d[i], c - i, _a) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
-	else {
-		var f = cache.get("each_ar", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var defV, defK, v, k;
-
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "d[i-1]"; break;
-			default: defV = "var v=d[i-1];"; v = "v"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: defK = ""; k = "(c-i)"; break;
-			default: defK = "var k=c-i;"; k = "k"; break;
-			}
-
-			f = new Function(alias, "d", "a", "for(var i=d.length;i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
-			cache.set("each_ar", proc, f);
-		}
-
-		this.broken = f($from, _d, _a);
-	}
-
-	return this;
-};
-
-ArrayReversedIterable.prototype.at = function(index) {
-	var d = this.data;
-	return d[d.length - index - 1];
-};
-
-ArrayReversedIterable.prototype.first = function(pred, arg) {
-	if (!pred) {
-		var data = this.data;
-		if (data.length > 0) {
-			return data[data.length - 1];
-		}
-	}
-	else {
-		return Iterable.prototype.first.call(this, pred, arg);
-	}
-};
-
-ArrayReversedIterable.prototype.last = function(pred, arg) {
-	if (!pred) {
-		var data = this.data;
-		if (data.length > 0) {
-			return data[0];
-		}
-	}
-	else {
-		return this.reverse().first(pred, arg);
-	}
-};
-
-ArrayReversedIterable.prototype.reverse = function() {
-	return new ArrayIterable(this.data);
-}
-
-ArrayReversedIterable.prototype.zip = function(second, resultSelector, arg) {
-	var self = this;
-	function iterator(proc, arg0) {
-		var data = self.data;
-		var l = data.length;
-
-		var rs;
-		if (typeof(resultSelector) == "string") {
-		    var splited = [];
-			var hint = lambdaGetHint(resultSelector, 5, splited);
-			var v, list = [];
-
-			switch (hint[0]) {
-			case 0: case 1: v = "@d[" + l + "-@i-1]"; break;
-			default: list.push("(@V=@d[" + l + "-@i-1])"); v = "@V"; break;
-			}
-
-			list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
-
-			rs = "(" + list.join(",") + ")";
-		}
-		else {
-			rs = "@rs(@d[" + l + "-@i-1],$,@i,$$,@a)";
-		}
-
-		var procStr;
-		if (typeof(proc) == "string") {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var v, k, list = [];
-
-			switch (hint[0]) {
-			case 0: case 1: v = rs; break;
-			default: list.push("(@RS=" + rs + ")"); v = "@RS"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: k = "(@k++)"; break;
-			default: list.push("(@kk=@k++)"); k = "@kk"; break;
-			}
-
-			list.push(lambdaJoin(splited, v, k, "@a0"));
-
-			procStr = "(" + list.join(",") + ")";
-		}
-		else {
-			procStr = "@p(" + rs + ",@k++,@a0)";
-		}
-
-		this.broken = $from(second).each("@i>=" + l + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: data, p: proc, rs: resultSelector}).broken;
-		return this;
-	}
-
-	return new Iterable(iterator);
-};
 
 //
 // ObjectReversedIterable
