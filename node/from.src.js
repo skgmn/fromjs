@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.0.0
+ * from.js for node v2.0.1
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -10,6 +10,9 @@
 // Beginning of code
 
 var alias = 'from';
+var defaultTrimmingTarget = [0, ' ', '\n', '\t'];
+var defaultTrimmingPredicateArray = '@.indexOf($)>=0';
+var defaultTrimmingPredicateIterable = '@.contains($)';
 
 function isNumber(str) {
 	return /^[0-9]+$/.exec(str) ? true : false;
@@ -673,9 +676,18 @@ Iterable.prototype.firstOrDefault = function(pred, defValue, arg) {
 };
 
 Iterable.prototype.groupBy = function (selectors, comparer, arg) {
-    var valueSelector = (selectors.value || '$');
-    var keySelector = (selectors.key || '$$');
-    var resultSelector = selectors.result;
+    var valueSelector;
+    var keySelector;
+    var resultSelector;
+
+    if (selectors) {
+        valueSelector = selectors.value;
+        keySelector = selectors.key;
+        resultSelector = selectors.result;
+    }
+    
+    valueSelector = (valueSelector || '$');
+    keySelector = (keySelector || '$$');
     
     if (resultSelector) {
 	    var rs;
@@ -1195,6 +1207,8 @@ Iterable.prototype.singleOrDefault = function(pred, defValue, arg) {
 };
 
 Iterable.prototype.skip = function(count) {
+    if (count <= 0) return this;
+
 	var self = this;
 	function iterator(proc, arg) {
 		var p;
@@ -1255,6 +1269,12 @@ Iterable.prototype.sum = function() {
 };
 
 Iterable.prototype.take = function(count) {
+    if (count == 0) {
+        return $from();
+    } else if (count < 0) {
+        return this.reverse().take(-count).reverse();
+    }
+
 	var self = this;
 	function iterator(proc, arg) {
 		var p;
@@ -1389,6 +1409,23 @@ Iterable.prototype.toURLEncoded = function() {
 	return toURLEncoded(null, this);
 };
 
+Iterable.prototype.trim = function(left, right, arg) {
+    var leftTarget;
+    var rightTarget;
+    
+    if (!left || left instanceof Array || left instanceof Iterable) {
+        leftTarget = left || defaultTrimmingTarget;
+        left = (left instanceof Iterable ? defaultTrimmingPredicateIterable : defaultTrimmingPredicateArray);
+    }
+    
+    if (!right || right instanceof Array || right instanceof Iterable) {
+        rightTarget = right || defaultTrimmingTarget;
+        right = (right instanceof Iterable ? defaultTrimmingPredicateIterable : defaultTrimmingPredicateArray);
+    }
+    
+    return this.skipWhile(left, leftTarget).reverse().skipWhile(right, rightTarget).reverse();
+};
+
 Iterable.prototype.union = function(second, comparer, arg) {
 	var buffer = [];
 	var bufferIterable = $from(buffer);
@@ -1501,7 +1538,7 @@ extend(Iterable, StringIterable);
 StringIterable.prototype.each = function(proc, _a) {
 	var s = this.str;
 	
-	if  (typeof(proc) == "function") {
+	if (typeof(proc) == "function") {
 		this.broken = false;
 		for (var i = 0, c = s.length; i < c; ++i) {
 			if (proc(s.charAt(i), i, _a) === false) {
@@ -1509,8 +1546,7 @@ StringIterable.prototype.each = function(proc, _a) {
 				break;
 			}
 		}
-	}
-	else {
+	} else {
 		var f = cache.get("each_s", proc);
 
 		if (!f) {
@@ -1583,6 +1619,14 @@ StringIterable.prototype.reverse = function() {
 	return new StringReversedIterable(this.str);
 };
 
+StringIterable.prototype.toString = function (separator) {
+    if (separator) {
+        return Iterable.prototype.toString.call(this, separator);
+    } else {
+        return this.str;
+    }
+};
+
 StringIterable.prototype.toJSON = function() {
 	return quote(this.str);
 };
@@ -1636,6 +1680,145 @@ StringIterable.prototype.zip = function(second, resultSelector, arg) {
 		}
 
 		this.broken = $from(second).each("@i>=" + s.length + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, p: proc, rs: resultSelector}).broken;
+		return this;
+	}
+
+	return new Iterable(iterator);
+};
+
+//
+// StringReversedIterable
+//
+
+function StringReversedIterable(str) {
+	this.str = str;
+}
+extend(StringIterable, StringReversedIterable);
+
+StringReversedIterable.prototype.each = function(proc, _a) {
+	var s = this.str;
+	
+	if  (typeof(proc) == "function") {
+		this.broken = false;
+		for (var c = s.length, i = c; i > 0; --i) {
+			if (proc(s.charAt(i), c - i, _a) === false) {
+				this.broken = true;
+				break;
+			}
+		}
+	}
+	else {
+		var f = cache.get("each_str", proc);
+		if (!f) {
+		    var splited = [];
+			var hint = lambdaGetHint(proc, 3, splited);
+			var defV, defK, v, k;
+
+			switch (hint[0]) {
+			case 0: case 1: defV = ""; v = "s.charAt(i-1)"; break;
+			default: defV = "var v=s.charAt(i-1);"; v = "v"; break;
+			}
+
+			switch (hint[1]) {
+			case 0: case 1: defK = ""; k = "(c-i)"; break;
+			default: defK = "var k=c-i;"; k = "k"; break;
+			}
+
+			f = new Function(alias, "s", "a", "for(var i=s.length,c=i;i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
+			cache.set("each_str", proc, f);
+		}
+
+		this.broken = f($from, s, _a);
+	}
+
+	return this;
+};
+
+StringReversedIterable.prototype.at = function(index) {
+	var s = this.str;
+	return s.charAt(s.length - index - 1);
+};
+
+StringReversedIterable.prototype.first = function(pred, arg) {
+	var s = this.str;
+	if (!pred) {
+		if (s.length > 0) {
+			return s.charAt(s.length - 1);
+		}
+	}
+	else {
+		return Iterable.prototype.first.call(this, pred, arg);
+	}
+};
+
+StringReversedIterable.prototype.last = function(pred, arg) {
+	var s = this.str;
+	if (!pred) {
+		if (s.length > 0) {
+			return s.charAt(0);
+		}
+	}
+	else {
+		return this.reverse().first(pred, arg);
+	}
+};
+
+StringReversedIterable.prototype.reverse = function() {
+	return new StringIterable(this.str);
+}
+
+StringReversedIterable.prototype.toString = Iterable.prototype.toString;
+
+StringReversedIterable.prototype.zip = function(second, resultSelector, arg) {
+	var s = this.str;
+	var l = s.length;
+
+	var rs;
+	if (typeof(resultSelector) == "string") {
+	    var splited = [];
+		var hint = lambdaGetHint(resultSelector, 5, splited);
+		var v, list = [];
+
+		switch (hint[0]) {
+		case 0: case 1: v = "@d.charAt(" + l + "-@i-1)"; break;
+		default: list.push("(@V=@d.charAt(" + l + "-@i-1))"); v = "@V"; break;
+		}
+
+		list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
+
+		rs = "(" + list.join(",") + ")";
+	}
+	else {
+		rs = "@rs(@d.charAt(" + l + "-@i-1],$,@i,$$,@a)";
+	}
+
+	var self = this;
+	function iterator(proc, arg0) {
+		var procStr;
+		if (typeof(proc) == "string") {
+		    var splited = [];
+			var hint = lambdaGetHint(proc, 3, splited);
+			var v, k, list = [];
+
+			switch (hint[0]) {
+			case 0: case 1: v = rs; break;
+			default: list.push("(@RS=" + rs + ")"); v = "@RS"; break;
+			}
+
+			switch (hint[1]) {
+			case 0: case 1: k = "(@k++)"; break;
+			default: list.push("(@kk=@k++)"); k = "@kk"; break;
+			}
+
+			list.push(lambdaJoin(splited, v, k, "@a0"));
+
+			procStr = "(" + list.join(",") + ")";
+		}
+		else {
+			procStr = "@p(" + rs + ",@k++,@a0)";
+		}
+
+		this.broken = $from(second).each("@i>=" + l + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, p: proc, rs: resultSelector}).broken;
 		return this;
 	}
 
@@ -1857,147 +2040,6 @@ ObjectIterable.prototype.reverse = function() {
 ObjectIterable.prototype.toJSON = ArrayIterable.prototype.toJSON;
 
 //
-// StringReversedIterable
-//
-
-function StringReversedIterable(str) {
-	this.str = str;
-}
-extend(StringIterable, StringReversedIterable);
-
-StringReversedIterable.prototype.each = function(proc, _a) {
-	var s = this.str;
-	
-	if  (typeof(proc) == "function") {
-		this.broken = false;
-		for (var c = s.length, i = c; i > 0; --i) {
-			if (proc(s.charAt(i), c - i, _a) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
-	else {
-		var f = cache.get("each_str", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var defV, defK, v, k;
-
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "s.charAt(i-1)"; break;
-			default: defV = "var v=s.charAt(i-1);"; v = "v"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: defK = ""; k = "(c-i)"; break;
-			default: defK = "var k=c-i;"; k = "k"; break;
-			}
-
-			f = new Function(alias, "s", "a", "for(var i=" + s.length + ";i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
-			cache.set("each_str", proc, f);
-		}
-
-		this.broken = f($from, s, _a);
-	}
-
-	return this;
-};
-
-StringReversedIterable.prototype.at = function(index) {
-	var s = this.str;
-	return s.charAt(s.length - index - 1);
-};
-
-StringReversedIterable.prototype.first = function(pred, arg) {
-	var s = this.str;
-	if (!pred) {
-		if (s.length > 0) {
-			return s.charAt(s.length - 1);
-		}
-	}
-	else {
-		return Iterable.prototype.first.call(this, pred, arg);
-	}
-};
-
-StringReversedIterable.prototype.last = function(pred, arg) {
-	var s = this.str;
-	if (!pred) {
-		if (s.length > 0) {
-			return s.charAt(0);
-		}
-	}
-	else {
-		return this.reverse().first(pred, arg);
-	}
-};
-
-StringReversedIterable.prototype.reverse = function() {
-	return new StringIterable(this.str);
-}
-
-StringIterable.prototype.toJSON = function() {
-	return quote(this.toString());
-};
-
-StringReversedIterable.prototype.zip = function(second, resultSelector, arg) {
-	var s = this.str;
-	var l = s.length;
-
-	var rs;
-	if (typeof(resultSelector) == "string") {
-	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 5, splited);
-		var v, list = [];
-
-		switch (hint[0]) {
-		case 0: case 1: v = "@d.charAt(" + l + "-@i-1)"; break;
-		default: list.push("(@V=@d.charAt(" + l + "-@i-1))"); v = "@V"; break;
-		}
-
-		list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
-
-		rs = "(" + list.join(",") + ")";
-	}
-	else {
-		rs = "@rs(@d.charAt(" + l + "-@i-1],$,@i,$$,@a)";
-	}
-
-	var self = this;
-	function iterator(proc, arg0) {
-		var procStr;
-		if (typeof(proc) == "string") {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var v, k, list = [];
-
-			switch (hint[0]) {
-			case 0: case 1: v = rs; break;
-			default: list.push("(@RS=" + rs + ")"); v = "@RS"; break;
-			}
-
-			switch (hint[1]) {
-			case 0: case 1: k = "(@k++)"; break;
-			default: list.push("(@kk=@k++)"); k = "@kk"; break;
-			}
-
-			list.push(lambdaJoin(splited, v, k, "@a0"));
-
-			procStr = "(" + list.join(",") + ")";
-		}
-		else {
-			procStr = "@p(" + rs + ",@k++,@a0)";
-		}
-
-		this.broken = $from(second).each("@i>=" + l + "?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, p: proc, rs: resultSelector}).broken;
-		return this;
-	}
-
-	return new Iterable(iterator);
-};
-
-//
 // ArrayReversedIterable
 //
 
@@ -2034,7 +2076,7 @@ ArrayReversedIterable.prototype.each = function(proc, _a) {
 			default: defK = "var k=c-i;"; k = "k"; break;
 			}
 
-			f = new Function(alias, "d", "a", "for(var i=" + _d.length + ";i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
+			f = new Function(alias, "d", "a", "for(var i=d.length;i>0;--i){" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
 			cache.set("each_ar", proc, f);
 		}
 
@@ -2260,7 +2302,7 @@ OrderedIterable.prototype.each = function(proc, arg) {
 			}
 
 			f = new Function(alias, "l", "r", "a",
-			    "for(var i=0;i<" + indices.length + ";++i){var n=l[i]*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
+			    "for(var i=0,c=l.length;i<c;++i){var n=l[i]*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
 			cache.set("each_ord", proc, f);
 		}
 		this.broken = f($from, indices, row, arg);
