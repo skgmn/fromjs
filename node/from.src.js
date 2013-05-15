@@ -11,8 +11,8 @@
 
 var alias = 'from';
 var defaultTrimmingTarget = [0, ' ', '\n', '\t'];
-var defaultTrimmingPredicateArray = '@.indexOf($)>=0';
-var defaultTrimmingPredicateIterable = '@.contains($)';
+var defaultTrimmingPredicateArray = '@t.indexOf($)>=0';
+var defaultTrimmingPredicateIterable = '@t.contains($)';
 
 function isNumber(str) {
 	return /^[0-9]+$/.exec(str) ? true : false;
@@ -298,6 +298,60 @@ function toURLEncoded(prefix, obj) {
 	}
 
 	return "";
+}
+
+function getTrimmingArgument(left, right, arg) {
+    var leftTarget;
+    var rightTarget;
+    
+    if (!left || left instanceof Array) {
+        leftTarget = defaultTrimmingTarget;
+        left = defaultTrimmingPredicateArray;
+    } else if (left instanceof Iterable) {
+        leftTarget = defaultTrimmingTarget;
+        left = defaultTrimmingPredicateIterable;
+    } else {
+        left = lambdaReplace(left, '$', '$$', '@.a');
+    }
+
+    if (!right || right instanceof Array) {
+        rightTarget = defaultTrimmingTarget;
+        right = defaultTrimmingPredicateArray;
+    } else if (right instanceof Iterable) {
+        rightTarget = defaultTrimmingTarget;
+        right = defaultTrimmingPredicateIterable;
+    } else {
+        right = lambdaReplace(right, '$', '$$', '@.a');
+    }
+
+    var leftArg = {t: leftTarget, a: arg};
+    var rightArg = {t: rightTarget, a: arg};
+
+    return {left: left, leftArg: leftArg, right: right, rightArg: rightArg};
+}
+
+function prepareVariables(hints, varName, value, ___) {
+    var result = {};
+    var decl = [];
+
+    for (var i = 0, c = hints.length; i < c; ++i) {
+        var argIndex = i * 2 + 1;
+        
+        var varName = arguments[argIndex];
+        if (!varName) continue;
+
+        var value = arguments[argIndex + 1];
+
+        if (hints <= 1) {
+            result[varName] = value;
+        } else {
+            decl.push('var ' + varName + '=' + value + ';');
+            result[varName] = varName;
+        }
+    }
+
+    result.decl = decl.join('');
+    return result;
 }
 
 //
@@ -600,7 +654,6 @@ Iterable.prototype.distinct = function(comparer, arg) {
 	var c = (comparer ? ",@c,@a" : "");
 
 	var l = [];
-	var ll = $from(l);
 
 	var self = this;
 	function it(proc, arg0) {
@@ -616,7 +669,7 @@ Iterable.prototype.distinct = function(comparer, arg) {
 			p = "@p($,$$,@a0)";
 		}
 
-		this.broken = self.each("!@ll.contains($" + c + ")?(@l.push($)," + p + "):0", {c: comparer, ll: ll, l: l, p: proc, a0: arg0}).broken;
+		this.broken = self.each("!from(@l).contains($" + c + ")?(@l.push($)," + p + "):0", {c: comparer, l: l, p: proc, a0: arg0}).broken;
 		return this;
 	};
 
@@ -703,30 +756,6 @@ Iterable.prototype.groupBy = function (selectors, comparer, arg) {
 	    return this._getGroupIterable(valueSelector, keySelector, comparer, arg);
     }
 };
-
-/*Iterable.prototype.groupBy = function(keySelector, comparer, arg) {
-	return this.groupBy2("$", keySelector, comparer, arg);
-};
-
-Iterable.prototype.groupBy2 = function(valueSelector, keySelector, comparer, arg) {
-	return this._getGroupIterable(valueSelector, keySelector, comparer, arg);
-};
-
-Iterable.prototype.groupBy3 = function(keySelector, resultSelector, comparer, arg) {
-	return this.groupBy4("$", keySelector, resultSelector, comparer, arg);
-};
-
-Iterable.prototype.groupBy4 = function(valueSelector, keySelector, resultSelector, comparer, arg) {
-	var rs;
-	if (typeof(resultSelector) == "string") {
-		rs = lambdaReplace(resultSelector, "$", "$$", "@a");
-	}
-	else {
-		rs = "@rs($,$$,@a)";
-	}
-
-	return this._getGroupIterable(valueSelector, keySelector, comparer, arg).selectPair(rs, "$$", {rs: resultSelector, a: arg});
-};*/
 
 Iterable.prototype._getGroupIterable = function(valueSelector, keySelector, comparer, arg) {
 	var groups = new Grouper(comparer, arg);
@@ -1410,25 +1439,13 @@ Iterable.prototype.toURLEncoded = function() {
 };
 
 Iterable.prototype.trim = function(left, right, arg) {
-    var leftTarget;
-    var rightTarget;
-    
-    if (!left || left instanceof Array || left instanceof Iterable) {
-        leftTarget = left || defaultTrimmingTarget;
-        left = (left instanceof Iterable ? defaultTrimmingPredicateIterable : defaultTrimmingPredicateArray);
-    }
-    
-    if (!right || right instanceof Array || right instanceof Iterable) {
-        rightTarget = right || defaultTrimmingTarget;
-        right = (right instanceof Iterable ? defaultTrimmingPredicateIterable : defaultTrimmingPredicateArray);
-    }
-    
-    return this.skipWhile(left, leftTarget).reverse().skipWhile(right, rightTarget).reverse();
+    var args = getTrimmingArgument(left, right, arg);
+
+    return this.skipWhile(args.left, args.leftArg).reverse().skipWhile(args.right, args.rightArg).reverse();
 };
 
 Iterable.prototype.union = function(second, comparer, arg) {
 	var buffer = [];
-	var bufferIterable = $from(buffer);
 
 	var self = this;
 	function it(proc, arg0) {
@@ -1447,9 +1464,9 @@ Iterable.prototype.union = function(second, comparer, arg) {
 			p = "@p($,@b.length-1,@a0)";
 		}
 
-		var lambda = "@bi.contains($,@c,@a)?0:(@b.push($)," + p + ",0)";
+		var lambda = "from(@b).contains($,@c,@a)?0:(@b.push($)," + p + ",0)";
 
-		var a = {c: comparer, b: buffer, bi: bufferIterable, a0: arg0, a: arg};
+		var a = {c: comparer, b: buffer, p: proc, a0: arg0, a: arg};
 		if (self.each(lambda, a).broken) {
 			this.broken = true;
 			return this;
@@ -1532,15 +1549,154 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 
 function RandomAccessIterable(data) {
 	this.data = data;
+    this.region = {
+        queries: null,
+        measured: false,
+        start: null,
+        end: null
+    };
 }
 extend(Iterable, RandomAccessIterable);
+
+RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
+    var r = this.region;
+    var q = r.queries;
+
+    if (!q) {
+        r.queries = q = [];
+    }
+
+    q.push(type);
+    q.push(proc);
+    q.push(arg);
+
+    r.measured = false;
+};
+
+RandomAccessIterable.prototype.reverseFrom = function (iterable) {
+    var data = this.data;
+    var r = this.region;
+    var rr = iterable.region;
+
+    var q = rr.queries;
+
+    if (q) {
+        var ql = q.length;
+        var newQueries = new Array(ql);
+
+        for (var i = 0; i < ql; ++i) {
+            if (i % 3 == 0) {
+                var v = q[i];
+                if (v == 'skipLeft') {
+                    newQueries[i] = 'skipRight';
+                } else if (v == 'skipRight') {
+                    newQueries[i] = 'skipLeft';
+                } else if (v == 'takeLeft') {
+                    newQueries[i] = 'takeRight';
+                } else if (v == 'takeRight') {
+                    newQueries[i] = 'takeLeft';
+                }
+            } else {
+                newQueries[i] = q[i];
+            }
+        }
+
+        r.queries = newQueries;
+    }
+
+    if (rr.start !== null) {
+        r.start = data.length - rr.end;
+    }
+    if (rr.end !== null) {
+        r.end = data.length - rr.start;
+    }
+    
+    return this;
+};
+
+RandomAccessIterable.prototype.measureRegion = function () {
+    var region = this.region;
+
+    if (!region.measured) {
+        var data = this.data;
+        var start = region.start;
+        var end = region.end;
+
+        if (start == null) start = 0;
+        if (end === null) end = data.length;
+
+        var queries = region.queries;
+
+        if (!queries) {
+            region.start = start;
+            region.end = end;
+        } else {
+            var codes = [];
+
+            for (var i = 0, c = queries.length; i < c; i += 3) {
+                var type = queries[i];
+                var proc = queries[i + 1];
+                var arg = queries[i + 2];
+
+                if (type == 'skipLeft') {
+                    if (typeof proc == 'number') {
+                        codes.push('s=Math.min(e,s+' + proc + ');'); 
+                    } else if (typeof proc == 'string') {
+                        var splited = [];
+                        var hints = lambdaGetHint(proc, 3, splited);
+
+                        var vars = prepareVariables(hints,
+                            'v', this.lambda.At('d', 's', 'dl'),
+                            null, null,
+                            'a', 'q[' + (i + 2) + ']');
+
+                        codes.push('for(var k=0;s<e;++s,++k){' +
+                            vars.decl +
+                            'if(!(' + lambdaJoin(splited, vars.v, 'k', vars.a) + ')){break;}}');
+                    } else {
+                        codes.push('for(var k=0;s<e&&q[' + (i + 1) + '](' + this.lambdaAt('d', 's', 'dl') + ',k,q[' + (i + 2) + ']);++s,++k);');
+                    }
+                } else if (type == 'skipRight') {
+                    if (typeof proc == 'number') {
+                        codes.push('e=Math.max(s,e-' + proc + ');'); 
+                    } else if (typeof proc == 'string') {
+                        var splited = [];
+                        var hints = lambdaGetHint(proc, 3, splited);
+
+                        var vars = prepareVariables(hints,
+                            'v', this.lambda.At('d', 'i', 'dl'),
+                            null, null,
+                            'a', 'q[' + (i + 2) + ']');
+
+                        codes.push('for(var k=0;s<e;--e,++k){' +
+                            'var i=e-1;' + vars.decl +
+                            'if(!(' + lambdaJoin(splited, vars.v, 'k', vars.a) + ')){break;}}');
+                    } else {
+                        codes.push('for(var k=0;s<e&&(q[' + (i + 1) + '](' + this.lambdaAt('d', 'e-1', 'dl') + ',k,q[' + (i + 2) + ']);--e,++k);');
+                    }
+                }
+            }
+
+            codes.push('r.start=s;r.end=e;');
+
+            var f = new Function('d', 'dl', 'r', 'q', 's', 'e', codes.join(''));
+            f(data, data.length, region, queries, start, end);
+
+            region.queries = null;
+        }
+
+        region.measured = true;
+    }
+
+    return region;
+};
 
 RandomAccessIterable.prototype.each = function(proc, _a) {
 	var s = this.data;
 	
 	if (typeof(proc) == "function") {
 		this.broken = false;
-		for (var i = 0, c = s.length; i < c; ++i) {
+		for (var i = 0, c = this.count(); i < c; ++i) {
 			if (proc(this.at(i), i, _a) === false) {
 				this.broken = true;
 				break;
@@ -1556,15 +1712,17 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
 			var defV, v;
 			
 			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = this.lambdaAt('s', 'i', 'c'); break;
-			default: defV = "var v=" + this.lambdaAt('s', 'i', 'c') + ";"; v = "v"; break;
+			case 0: case 1: defV = ""; v = this.lambdaAt('s', '_s', '_l'); break;
+			default: defV = "var _v=" + this.lambdaAt('s', '_s', '_l') + ";"; v = "_v"; break;
 			}
 
-			f = new Function(alias, "s", "a", "for(var i=0,c=s.length;i<c;++i){" + defV + "if((" + lambdaJoin(splited, v, "i", "a") + ")===false){return true;}}return false;");
+			f = new Function(alias, "s", "_l", "_s", "_e", "a",
+                "for(var _i=0;_s<_e;++_s,++_i){" + defV + "if((" + lambdaJoin(splited, v, "_i", "a") + ")===false){return true;}}return false;");
 			cache.set("each_" + dt, proc, f);
 		}
 
-		this.broken = f($from, s, _a);
+        var region = this.measureRegion();
+		this.broken = f($from, s, s.length, region.start, region.end, _a);
 	}
 
 	return this;
@@ -1572,7 +1730,8 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
 
 RandomAccessIterable.prototype.count = function(pred, arg) {
 	if (!pred) {
-		return this.data.length;
+        var r = this.measureRegion();
+		return r.end - r.start;
 	}
 	else {
 		return Iterable.prototype.count.call(this, pred, arg);
@@ -1581,7 +1740,7 @@ RandomAccessIterable.prototype.count = function(pred, arg) {
 
 RandomAccessIterable.prototype.any = function (pred, arg) {
     if (!pred) {
-        return this.data.length > 0;
+        return this.count() > 0;
     } else {
 		return Iterable.prototype.any.call(this, pred, arg);
     }
@@ -1589,7 +1748,7 @@ RandomAccessIterable.prototype.any = function (pred, arg) {
 
 RandomAccessIterable.prototype.first = function(pred, arg) {
 	if (!pred) {
-		if (this.data.length > 0) {
+		if (this.count() > 0) {
 			return this.at(0);
 		}
 	}
@@ -1600,7 +1759,7 @@ RandomAccessIterable.prototype.first = function(pred, arg) {
 
 RandomAccessIterable.prototype.last = function(pred, arg) {
 	if (!pred) {
-		var l = this.data.length;
+		var l = this.count();
 		if (l > 0) {
 			return this.at(l - 1);
 		}
@@ -1608,6 +1767,35 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 	else {
 		return this.reverse().first(pred, arg);
 	}
+};
+
+RandomAccessIterable.prototype.skip = function (count) {
+    this.addRegionQuery('skipLeft', count, null);
+    return this;
+};
+
+RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
+    this.addRegionQuery('skipLeft', pred, arg);
+    return this;
+};
+
+RandomAccessIterable.prototype.toArray = function () {
+    var l = this.count();
+
+    var result = new Array(l);
+    for (var i = 0; i < l; ++i) {
+        result[i] = this.at(i);
+    }
+
+    return result;
+};
+
+RandomAccessIterable.prototype.trim = function(left, right, arg) {
+    var args = getTrimmingArgument(left, right, arg);
+
+    this.addRegionQuery('skipLeft', args.left, args.leftArg);
+    this.addRegionQuery('skipRight', args.right, args.rightArg);
+    return this;
 };
 
 RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
@@ -1671,7 +1859,7 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 //
 
 function StringIterable(str) {
-	this.data = str;
+    RandomAccessIterable.call(this, str);
 }
 extend(RandomAccessIterable, StringIterable);
 
@@ -1682,19 +1870,25 @@ StringIterable.prototype.lambdaAt = function (target, index) {
 };
 
 StringIterable.prototype.at = function(index) {
-	return this.data.charAt(index);
+    var r = this.measureRegion();
+	return this.data.charAt(r.start + index);
 };
 
 StringIterable.prototype.reverse = function() {
-	return new StringReversedIterable(this.data);
+	return new StringReversedIterable(this.data).reverseFrom(this);
 };
 
 StringIterable.prototype.toString = function (separator) {
-    if (separator) {
-        return Iterable.prototype.toString.call(this, separator);
-    } else {
-        return this.data;
+    if (!separator) {
+        var data = this.data;
+        
+        var r = this.measureRegion();
+        if (r.start == 0 && r.end == data.length) {
+            return data;
+        }
     }
+
+    return Iterable.prototype.toString.call(this, separator);
 };
 
 StringIterable.prototype.toJSON = function() {
@@ -1706,7 +1900,7 @@ StringIterable.prototype.toJSON = function() {
 //
 
 function StringReversedIterable(str) {
-	this.data = str;
+    RandomAccessIterable.call(this, str);
 }
 extend(RandomAccessIterable, StringReversedIterable);
 
@@ -1717,12 +1911,12 @@ StringReversedIterable.prototype.lambdaAt = function (target, index, length) {
 };
 
 StringReversedIterable.prototype.at = function(index) {
-    var s = this.data;
-	return s.charAt(s.length - index - 1);
+    var r = this.measureRegion();
+	return this.data.charAt(r.end - index - 1);
 };
 
 StringReversedIterable.prototype.reverse = function() {
-	return new StringIterable(this.str);
+	return new StringIterable(this.data).reverseFrom(this);
 };
 
 StringReversedIterable.prototype.toJSON = function() {
@@ -1734,7 +1928,7 @@ StringReversedIterable.prototype.toJSON = function() {
 //
 
 function ArrayIterable(array) {
-	this.data = array;
+    RandomAccessIterable.call(this, array);
 }
 extend(RandomAccessIterable, ArrayIterable);
 
@@ -1745,11 +1939,12 @@ ArrayIterable.prototype.lambdaAt = function (target, index) {
 };
 
 ArrayIterable.prototype.at = function(index) {
-	return this.data[index];
+    var r = this.measureRegion();
+	return this.data[r.start + index];
 };
 
 ArrayIterable.prototype.reverse = function() {
-	return new ArrayReversedIterable(this.data);
+	return new ArrayReversedIterable(this.data).reverseFrom(this);
 };
 
 ArrayIterable.prototype.toJSON = function(track) {
@@ -1771,7 +1966,7 @@ ArrayIterable.prototype.toJSON = function(track) {
 //
 
 function ArrayReversedIterable(array) {
-	this.data = array;
+    RandomAccessIterable.call(this, array);
 }
 extend(RandomAccessIterable, ArrayReversedIterable);
 
@@ -1782,8 +1977,8 @@ ArrayReversedIterable.prototype.lambdaAt = function (target, index, length) {
 };
 
 ArrayReversedIterable.prototype.at = function(index) {
-    var array = this.data;
-	return array[array.length - index - 1];
+    var r = this.measureRegion();
+	return this.data[r.end - index - 1];
 };
 
 ArrayReversedIterable.prototype.at = function(index) {
@@ -1792,7 +1987,7 @@ ArrayReversedIterable.prototype.at = function(index) {
 };
 
 ArrayReversedIterable.prototype.reverse = function() {
-	return new ArrayIterable(this.data);
+	return new ArrayIterable(this.data).reverseFrom(this);
 }
 
 //
@@ -2101,7 +2296,7 @@ $from.setAlias = function (newAlias) {
     alias = newAlias;
 };
 
-$from.Lambda = {
+$from.lambda = {
 	replace: lambdaReplace,
 	parse: lambdaParse,
 	getHint: lambdaGetHint,
