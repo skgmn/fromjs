@@ -1,5 +1,5 @@
 # from.js
-from.js is a super fast, well-optimized LINQ engine for JavaScript.
+from.js is a super fast, extremely-optimized LINQ engine for JavaScript.
 
 ## Features
 * **High-performance**
