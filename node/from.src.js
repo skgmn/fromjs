@@ -10,7 +10,7 @@
 // Beginning of code
 
 var alias = 'from';
-var defaultTrimmingTarget = [undefined, null, 0, ' ', '\n', '\t'];
+var defaultTrimmingTarget = [undefined, null, false, 0, ' ', '\n', '\t'];
 var defaultTrimmingPredicateArray = '@t.indexOf($)>=0';
 var defaultTrimmingPredicateIterable = '@t.contains($)';
 
@@ -263,7 +263,9 @@ function quote(s) {
 function extend(from, to) {
 	var emptyCtor = function() {};
 	emptyCtor.prototype = from.prototype;
-	to.prototype = new emptyCtor();
+	
+    to.prototype = new emptyCtor();
+    to.prototype.constructor = to;
 }
 
 function toURLEncoded(prefix, obj) {
@@ -1002,15 +1004,11 @@ Iterable.prototype.min = function(selector, arg) {
 };
 
 Iterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	var Iterable = new OrderedIterable(this);
-	Iterable._addContext(keySelector || "$", comparer, false, arg);
-	return Iterable;
+	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, false, arg);
 };
 
 Iterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	var Iterable = new OrderedIterable(this);
-	Iterable._addContext(keySelector || "$", comparer, true, arg);
-	return Iterable;
+	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, true, arg);
 };
 
 Iterable.prototype.reverse = function() {
@@ -1594,10 +1592,34 @@ RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
 
     r.start = r.end = null;
     r.measured = false;
+
+    return this;
 };
 
-RandomAccessIterable.prototype.reverseRegion = function (iterable) {
+RandomAccessIterable.prototype.clone = function () {
+    var result = new this.constructor(this.data);
+
     var r = this.region;
+    if (r) {
+        var rr = result.region = {
+            measured: r.measured,
+            start: r.start,
+            end: r.end,
+            take: r.take,
+            takeArg: r.takeArg
+        };
+
+        var q = r.queries;
+        if (q) {
+            rr.queries = $from(q).toArray();
+        }
+    }
+
+    return result;
+};
+
+RandomAccessIterable.prototype.reverseRegion = function () {
+    var r = this.initRegion();
 
     if (r) {
         if (r.take) {
@@ -1605,6 +1627,8 @@ RandomAccessIterable.prototype.reverseRegion = function (iterable) {
         }
         r.take = r.takeArg = null;
     }
+
+    this.rev = !this.rev;
     
     return this;
 };
@@ -1643,14 +1667,14 @@ RandomAccessIterable.prototype.measureRegion = function () {
                         var hints = lambdaGetUseCount(proc, 3, splited);
 
                         var vars = prepareVariables(hints,
-                            'v', this.lambdaGetItem('d', 's', 'dl'),
+                            'v', this.lambdaGetItem('d', 's'),
                             null, null,
                             'a', 'q[' + (i + 2) + ']');
 
                         codes.push('for(;s<e;++s){', vars.decl,
                             'if(!(', lambdaJoin(splited, vars.v, 's', vars.a), ')){break;}}');
                     } else {
-                        codes.push('for(;s<e&&q[', i + 1, '](', this.lambdaGetItem('d', 's', 'dl'), ',s,q[', i + 2, ']);++s);');
+                        codes.push('for(;s<e&&q[', i + 1, '](', this.lambdaGetItem('d', 's'), ',s,q[', i + 2, ']);++s);');
                     }
                 } else if (type == 'skipRight') {
                     if (typeof proc == 'number') {
@@ -1668,7 +1692,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                         }
 
                         var vars = prepareVariables(hints,
-                            'v', this.lambdaGetItem('d', i2, 'dl'),
+                            'v', this.lambdaGetItem('d', i2),
                             null, null,
                             'a', 'q[' + (i + 2) + ']');
 
@@ -1676,7 +1700,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                             'if(!(', lambdaJoin(splited, vars.v, i2, vars.a), ')){break;}}');
                     } else {
                         codes.push('for(;s<e;--e){var _i=e-1;',
-                            'if(!q[', i + 1, '](', this.lambdaGetItem('d', '_i', 'dl'), ',_i,q[', i + 2, '])){break;}}');
+                            'if(!q[', i + 1, '](', this.lambdaGetItem('d', '_i'), ',_i,q[', i + 2, '])){break;}}');
                     }
                 } else if (type == 'takeLeft') {
                     if (typeof proc == 'number') {
@@ -1690,7 +1714,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                             var hints = lambdaGetUseCount(proc, 3, splited);
 
                             var vars = prepareVariables(hints,
-                                '_v', this.lambdaGetItem('d', 'e', 'dl'),
+                                '_v', this.lambdaGetItem('d', 'e'),
                                 null, null,
                                 '_a', 'q[' + (i + 2) + ']');
 
@@ -1698,7 +1722,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                                 'if(!(', lambdaJoin(splited, vars._v, 'e', vars._a), ')){break;}}');
                         } else {
                             codes.push('for(var _e2=e,e=s;e<_e2;++e){',
-                                'if(!q[', i + 1, '](', this.lambdaGetItem('d', 'e', 'dl'), ',e,q[', i + 2, '])){break;}}');
+                                'if(!q[', i + 1, '](', this.lambdaGetItem('d', 'e'), ',e,q[', i + 2, '])){break;}}');
                         }
                     }
                 } else if (type == 'takeRight') {
@@ -1721,7 +1745,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                             }
 
                             var vars = prepareVariables(hints,
-                                '_v', this.lambdaGetItem('d', i2, 'dl'),
+                                '_v', this.lambdaGetItem('d', i2),
                                 null, null,
                                 '_a', 'q[' + (i + 2) + ']');
 
@@ -1729,7 +1753,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                                 'if(!(', lambdaJoin(splited, vars._v, i2, vars._a), ')){break;}}');
                         } else {
                             codes.push('for(var _s2=s,s=e;s>_s2;--s){var _i=s-1;',
-                                'if(!q[', i + 1, '](', this.labmdaAt('d', '_i', 'dl'), ',_i,q[', i + 2, '])){break;}}');
+                                'if(!q[', i + 1, '](', this.labmdaGetItem('d', '_i'), ',_i,q[', i + 2, '])){break;}}');
                         }
                     }
                 }
@@ -1737,8 +1761,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
             codes.push('r.start=s;r.end=e;');
 
-            var f = new Function('d', 'dl', 'r', 'q', 's', 'e', codes.join(''));
-            f(data, data.length, region, queries, start, end);
+            var f = new Function('d', 'r', 'q', 's', 'e', codes.join(''));
+            f(data, region, queries, start, end);
         }
 
         region.measured = true;
@@ -1883,33 +1907,27 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 };
 
 RandomAccessIterable.prototype.reverse = function () {
-    this.rev = !this.rev;
-    this.reverseRegion();
-    return this;
+    return this.clone().reverseRegion();
 };
 
 RandomAccessIterable.prototype.skip = function (count) {
-    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', count, null);
-    return this;
+    return this.clone().addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', count, null);
 };
 
 RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
-    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', pred, arg);
-    return this;
+    return this.clone().addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', pred, arg);
 };
 
 RandomAccessIterable.prototype.take = function (count) {
     if (count < 0) {
-        this.addRegionQuery(!this.rev ? 'takeRight' : 'takeLeft', -count, null);
+        return this.clone().addRegionQuery(!this.rev ? 'takeRight' : 'takeLeft', -count, null);
     } else {
-        this.addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', count, null);
+        return this.clone().addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', count, null);
     }
-    return this;
 };
 
 RandomAccessIterable.prototype.takeWhile = function (pred, arg) {
-    this.addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', pred, arg);
-    return this;
+    return this.clone().addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', pred, arg);
 };
 
 RandomAccessIterable.prototype.toArray = function () {
@@ -1940,30 +1958,39 @@ RandomAccessIterable.prototype.toArray = function () {
 RandomAccessIterable.prototype.trim = function(left, right, arg) {
     var args = getTrimmingArgument(left, right, arg);
 
-    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', args.left, args.leftArg);
-    this.addRegionQuery(!this.rev ? 'skipRight' : 'skipLeft', args.right, args.rightArg);
-    return this;
+    var clone = this.clone();
+    clone.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', args.left, args.leftArg);
+    clone.addRegionQuery(!this.rev ? 'skipRight' : 'skipLeft', args.right, args.rightArg);
+
+    return clone;
 };
 
-// TODO: revese 처리 아직 안됨
 RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
+    var rev = this.rev;
+
     var rs;
+    var index = (!rev ? '@i' : '@l-@i-1');
+
     if (typeof(resultSelector) == "string") {
         var splited = [];
 	    var hint = lambdaGetUseCount(resultSelector, 5, splited);
-	    var v, list = [];
+	    var list = [];
 
-	    switch (hint[0]) {
-	    case 0: case 1: v = this.lambdaGetItem('@d', '@i', '@l'); break;
-	    default: list.push("(@V=" + this.lambdaGetItem('@d', '@i', '@l') + ")"); v = "@V"; break;
-	    }
+        if (rev && hint[1] > 0) {
+            list.push('(@.ii=' + index + ')');
+            index = '@.ii';
+        }
 
-	    list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
+        var v = this.lambdaGetItem('@d', index);
+        if (hint[0] > 1) {
+            list.push("(@V=" + v + ")"); v = "@V";
+        }
+
+	    list.push("(" + lambdaJoin(splited, v, "$", index, "$$", "@a") + ")");
 
 	    rs = "(" + list.join(",") + ")";
-    }
-    else {
-	    rs = "@rs(" + this.lambdaGetItem('@d', '@i', '@l') + ",$,@i,$$,@a)";
+    } else {
+	    rs = "@rs(" + v + ",$," + index + ",$$,@a)";
     }
 
 	var self = this;
@@ -1995,7 +2022,8 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 			procStr = "@p(" + rs + ",@k++,@a0)";
 		}
 
-		this.broken = $from(second).each("@i>=@l?false:@r=" + procStr + ",++@i,@r", {a: arg, a0: arg0, k: 0, i: 0, d: s, l: l, p: proc, rs: resultSelector}).broken;
+        var a = {a: arg, a0: arg0, k: 0, i: 0, d: s, l: l, p: proc, rs: resultSelector, b: true};
+		this.broken = $from(second).each("@.i>=@.l?@.b=false:@.r=" + procStr + ",++@.i,@.r", a).broken && !a.nb;
 		return this;
 	}
 
@@ -2196,17 +2224,34 @@ ObjectReversedIterable.prototype.reverse = function() {
 
 function OrderedIterable(Iterable) {
 	this.Iterable = Iterable;
-	this.context = [];
 }
 extend(ObjectIterable, OrderedIterable);
 
+OrderedIterable.prototype.clone = function () {
+    var o = new this.constructor(this.Iterable);
+    var ctx = this.context;
+
+    if (ctx) {
+        o.context = from(ctx).toArray();
+    }
+
+    return o;
+};
+
 OrderedIterable.prototype._addContext = function(keySelector, comparer, desc, arg) {
-	this.context.push({
+    var ctx = this.context;
+    if (!ctx) {
+        this.context = ctx = [];
+    }
+
+	ctx.push({
 		keySelector: lambdaParse(keySelector, 3),
 		comparer: lambdaParse(comparer, 3),
 		desc: desc,
 		arg: arg
 	});
+
+    return this;
 }
 
 OrderedIterable.prototype.each = function(proc, arg) {
@@ -2218,24 +2263,26 @@ OrderedIterable.prototype.each = function(proc, arg) {
 	var contexts = this.context;
 
 	function f(a, b) {
-		for (var i = 0, l = contexts.length; i < l; ++i) {
-			var ctx = contexts[i];
+        if (contexts) {
+            for (var i = 0, l = contexts.length; i < l; ++i) {
+                var ctx = contexts[i];
 
-			var aSelected = ctx.keySelector(row[a * 2 + 1], row[a * 2], ctx.arg);
-			var bSelected = ctx.keySelector(row[b * 2 + 1], row[b * 2], ctx.arg);
+                var aSelected = ctx.keySelector(row[a * 2 + 1], row[a * 2], ctx.arg);
+                var bSelected = ctx.keySelector(row[b * 2 + 1], row[b * 2], ctx.arg);
 
-			var compared;
-			if (!ctx.comparer) {
-				compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -1 : 1));
-			}
-			else {
-				compared = ctx.comparer(aSelected, bSelected, ctx.arg);
-			}
+                var compared;
+                if (!ctx.comparer) {
+                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -1 : 1));
+                }
+                else {
+                    compared = ctx.comparer(aSelected, bSelected, ctx.arg);
+                }
 
-			if (compared != 0) return (ctx.desc ? -1 : 1) * compared;
-		}
+                if (compared != 0) return (ctx.desc ? -1 : 1) * compared;
+            }
+        }
 
-		return 0;
+		return (a == b ? 0 : (a < b ? -1 : 1));
 	}
 
 	indices.sort(f);
@@ -2278,13 +2325,11 @@ OrderedIterable.prototype.each = function(proc, arg) {
 };
 
 OrderedIterable.prototype.thenBy = function(keySelector, comparer, arg) {
-	this._addContext(keySelector, comparer, false, arg);
-	return this;
+	return this.clone()._addContext(keySelector, comparer, false, arg);
 };
 
 OrderedIterable.prototype.thenByDesc = function(keySelector, comparer, arg) {
-	this._addContext(keySelector, comparer, true, arg);
-	return this;
+	return this.clone()._addContext(keySelector, comparer, true, arg);
 };
 
 function $from(obj) {
