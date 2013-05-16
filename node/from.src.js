@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.0.1
+ * from.js for node v2.1.0
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -10,7 +10,7 @@
 // Beginning of code
 
 var alias = 'from';
-var defaultTrimmingTarget = [0, ' ', '\n', '\t'];
+var defaultTrimmingTarget = [undefined, null, 0, ' ', '\n', '\t'];
 var defaultTrimmingPredicateArray = '@t.indexOf($)>=0';
 var defaultTrimmingPredicateIterable = '@t.contains($)';
 
@@ -37,7 +37,7 @@ var rxLambdaWithOneArg = /^\s*(\w+)\s*=>(.+)$/;
 var rxLambdaWithManyArgs = /^\s*\(\s*([\w\s,]*)\s*\)\s*=>(.+)$/;
 var rxIds = /"(?:[^"]|\\")*"|'(?:[^']|\\')*'|[\$@\w_#]+/g;
 
-function lambdaGetHint(str, argCount, splited) {
+function lambdaGetUseCount(str, argCount, splited) {
 	var hint;
 	var names;
 	
@@ -310,7 +310,7 @@ function getTrimmingArgument(left, right, arg) {
     } else if (left instanceof Iterable) {
         leftTarget = defaultTrimmingTarget;
         left = defaultTrimmingPredicateIterable;
-    } else {
+    } else if (typeof left == 'string') {
         left = lambdaReplace(left, '$', '$$', '@.a');
     }
 
@@ -320,7 +320,7 @@ function getTrimmingArgument(left, right, arg) {
     } else if (right instanceof Iterable) {
         rightTarget = defaultTrimmingTarget;
         right = defaultTrimmingPredicateIterable;
-    } else {
+    } else if (typeof right == 'string') {
         right = lambdaReplace(right, '$', '$$', '@.a');
     }
 
@@ -342,11 +342,22 @@ function prepareVariables(hints, varName, value, ___) {
 
         var value = arguments[argIndex + 1];
 
-        if (hints <= 1) {
-            result[varName] = value;
+        if (value instanceof Array) {
+            if (hints[i] == 0) {
+                for (var j = 0, c2 = value.length; j < c2; ++j) {
+                    value[j] = '';
+                }
+                result[varName] = value;
+            } else {
+                result[varName] = value;
+            }
         } else {
-            decl.push('var ' + varName + '=' + value + ';');
-            result[varName] = varName;
+            if (hints[i] <= 1) {
+                result[varName] = value;
+            } else {
+                decl.push('var ' + varName + '=' + value + ';');
+                result[varName] = varName;
+            }
         }
     }
 
@@ -818,7 +829,7 @@ Iterable.prototype.groupJoin = function(inner, outerKeySelector, innerKeySelecto
 	var rs;
 	if (typeof(resultSelector) == "string") {
 	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 3, splited);
+		var hint = lambdaGetUseCount(resultSelector, 3, splited);
 		
 		switch (hint[1]) {
 		case 0:
@@ -892,7 +903,7 @@ Iterable.prototype.join = function(inner, outerKeySelector, innerKeySelector, re
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var list = [];
 			var v, k;
 
@@ -1010,7 +1021,7 @@ Iterable.prototype.reverse = function() {
 
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var defV, defK;
 			var v, k;
 
@@ -1064,7 +1075,7 @@ Iterable.prototype.select = function(selector, arg0) {
 	iterator = function(proc, arg) {
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 
 			var list = [];
 			var v, k;
@@ -1109,7 +1120,7 @@ Iterable.prototype.selectMany = function(selector, arg) {
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			
 			switch (hint[1]) {
 			case 0:
@@ -1160,7 +1171,7 @@ Iterable.prototype.selectPair = function(valueSelector, keySelector, arg0) {
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var v, k;
 			var list = [];
 
@@ -1452,7 +1463,7 @@ Iterable.prototype.union = function(second, comparer, arg) {
 		var p;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			
 			switch (hint[1]) {
 			case 0:
@@ -1486,7 +1497,7 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 	var rs;
 	if (typeof(resultSelector) == "string") {
 	    var splited = [];
-		var hint = lambdaGetHint(resultSelector, 5, splited);
+		var hint = lambdaGetUseCount(resultSelector, 5, splited);
 		var v, k, list = [];
 
 		switch (hint[0]) {
@@ -1515,7 +1526,7 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var v, k, list = [];
 
 			switch (hint[0]) {
@@ -1549,17 +1560,28 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 
 function RandomAccessIterable(data) {
 	this.data = data;
-    this.region = {
-        queries: null,
-        measured: false,
-        start: null,
-        end: null
-    };
+    this.rev = false;
 }
 extend(Iterable, RandomAccessIterable);
 
-RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
+RandomAccessIterable.prototype.initRegion = function () {
     var r = this.region;
+    if (!r) {
+        this.region = r = {
+            queries: null,
+            measured: false,
+            start: null,
+            end: null,
+            take: null,
+            takeArg: null
+        };
+    }
+
+    return r;
+};
+
+RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
+    var r = this.initRegion();
     var q = r.queries;
 
     if (!q) {
@@ -1570,52 +1592,25 @@ RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
     q.push(proc);
     q.push(arg);
 
+    r.start = r.end = null;
     r.measured = false;
 };
 
-RandomAccessIterable.prototype.reverseFrom = function (iterable) {
-    var data = this.data;
+RandomAccessIterable.prototype.reverseRegion = function (iterable) {
     var r = this.region;
-    var rr = iterable.region;
 
-    var q = rr.queries;
-
-    if (q) {
-        var ql = q.length;
-        var newQueries = new Array(ql);
-
-        for (var i = 0; i < ql; ++i) {
-            if (i % 3 == 0) {
-                var v = q[i];
-                if (v == 'skipLeft') {
-                    newQueries[i] = 'skipRight';
-                } else if (v == 'skipRight') {
-                    newQueries[i] = 'skipLeft';
-                } else if (v == 'takeLeft') {
-                    newQueries[i] = 'takeRight';
-                } else if (v == 'takeRight') {
-                    newQueries[i] = 'takeLeft';
-                }
-            } else {
-                newQueries[i] = q[i];
-            }
+    if (r) {
+        if (r.take) {
+            r.measured = false;
         }
-
-        r.queries = newQueries;
-    }
-
-    if (rr.start !== null) {
-        r.start = data.length - rr.end;
-    }
-    if (rr.end !== null) {
-        r.end = data.length - rr.start;
+        r.take = r.takeArg = null;
     }
     
     return this;
 };
 
 RandomAccessIterable.prototype.measureRegion = function () {
-    var region = this.region;
+    var region = this.initRegion();
 
     if (!region.measured) {
         var data = this.data;
@@ -1624,6 +1619,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
         if (start == null) start = 0;
         if (end === null) end = data.length;
+
+        region.takeLeft = region.takeLeftArg = null;
 
         var queries = region.queries;
 
@@ -1643,36 +1640,97 @@ RandomAccessIterable.prototype.measureRegion = function () {
                         codes.push('s=Math.min(e,s+' + proc + ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
-                        var hints = lambdaGetHint(proc, 3, splited);
+                        var hints = lambdaGetUseCount(proc, 3, splited);
 
                         var vars = prepareVariables(hints,
-                            'v', this.lambda.At('d', 's', 'dl'),
+                            'v', this.lambdaGetItem('d', 's', 'dl'),
                             null, null,
                             'a', 'q[' + (i + 2) + ']');
 
-                        codes.push('for(var k=0;s<e;++s,++k){' +
-                            vars.decl +
-                            'if(!(' + lambdaJoin(splited, vars.v, 'k', vars.a) + ')){break;}}');
+                        codes.push('for(;s<e;++s){', vars.decl,
+                            'if(!(', lambdaJoin(splited, vars.v, 's', vars.a), ')){break;}}');
                     } else {
-                        codes.push('for(var k=0;s<e&&q[' + (i + 1) + '](' + this.lambdaAt('d', 's', 'dl') + ',k,q[' + (i + 2) + ']);++s,++k);');
+                        codes.push('for(;s<e&&q[', i + 1, '](', this.lambdaGetItem('d', 's', 'dl'), ',s,q[', i + 2, ']);++s);');
                     }
                 } else if (type == 'skipRight') {
                     if (typeof proc == 'number') {
-                        codes.push('e=Math.max(s,e-' + proc + ');'); 
+                        codes.push('e=Math.max(s,e-', proc, ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
-                        var hints = lambdaGetHint(proc, 3, splited);
+                        var hints = lambdaGetUseCount(proc, 3, splited);
+
+                        var i1, i2;
+                        
+                        if (hints[1] == 0) {
+                            i1 = ''; i2 = 'e-1';
+                        } else {
+                            i1 = 'var _i=e-1;'; i2 = '_i';
+                        }
 
                         var vars = prepareVariables(hints,
-                            'v', this.lambda.At('d', 'i', 'dl'),
+                            'v', this.lambdaGetItem('d', i2, 'dl'),
                             null, null,
                             'a', 'q[' + (i + 2) + ']');
 
-                        codes.push('for(var k=0;s<e;--e,++k){' +
-                            'var i=e-1;' + vars.decl +
-                            'if(!(' + lambdaJoin(splited, vars.v, 'k', vars.a) + ')){break;}}');
+                        codes.push('for(;s<e;--e){', i1, vars.decl,
+                            'if(!(', lambdaJoin(splited, vars.v, i2, vars.a), ')){break;}}');
                     } else {
-                        codes.push('for(var k=0;s<e&&(q[' + (i + 1) + '](' + this.lambdaAt('d', 'e-1', 'dl') + ',k,q[' + (i + 2) + ']);--e,++k);');
+                        codes.push('for(;s<e;--e){var _i=e-1;',
+                            'if(!q[', i + 1, '](', this.lambdaGetItem('d', '_i', 'dl'), ',_i,q[', i + 2, '])){break;}}');
+                    }
+                } else if (type == 'takeLeft') {
+                    if (typeof proc == 'number') {
+                        codes.push('e=Math.min(e,s+', proc, ');');
+                    } else {
+                        if (i == c - 3 && !this.rev) {
+                            region.take = proc;
+                            region.takeArg = arg;
+                        } else if (typeof proc == 'string') {
+                            var splited = [];
+                            var hints = lambdaGetUseCount(proc, 3, splited);
+
+                            var vars = prepareVariables(hints,
+                                '_v', this.lambdaGetItem('d', 'e', 'dl'),
+                                null, null,
+                                '_a', 'q[' + (i + 2) + ']');
+
+                            codes.push('for(var _e2=e,e=s;e<_e2;++e){', vars.decl,
+                                'if(!(', lambdaJoin(splited, vars._v, 'e', vars._a), ')){break;}}');
+                        } else {
+                            codes.push('for(var _e2=e,e=s;e<_e2;++e){',
+                                'if(!q[', i + 1, '](', this.lambdaGetItem('d', 'e', 'dl'), ',e,q[', i + 2, '])){break;}}');
+                        }
+                    }
+                } else if (type == 'takeRight') {
+                    if (typeof proc == 'number') {
+                        codes.push('s=Math.max(s,e-', proc, ');');
+                    } else {
+                        if (i == c - 3 && this.rev) {
+                            region.take = proc;
+                            region.takeArg = arg;
+                        } else if (typeof proc == 'string') {
+                            var splited = [];
+                            var hints = lambdaGetUseCount(proc, 3, splited);
+
+                            var i1, i2;
+                            
+                            if (hints[1] == 0) {
+                                i1 = ''; i2 = 's-1';
+                            } else {
+                                i1 = 'var _i=s-1;'; i2 = '_i';
+                            }
+
+                            var vars = prepareVariables(hints,
+                                '_v', this.lambdaGetItem('d', i2, 'dl'),
+                                null, null,
+                                '_a', 'q[' + (i + 2) + ']');
+
+                            codes.push('for(var _s2=s,s=e;s>_s2;--s){', i1, vars.decl,
+                                'if(!(', lambdaJoin(splited, vars._v, i2, vars._a), ')){break;}}');
+                        } else {
+                            codes.push('for(var _s2=s,s=e;s>_s2;--s){var _i=s-1;',
+                                'if(!q[', i + 1, '](', this.labmdaAt('d', '_i', 'dl'), ',_i,q[', i + 2, '])){break;}}');
+                        }
                     }
                 }
             }
@@ -1681,8 +1739,6 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
             var f = new Function('d', 'dl', 'r', 'q', 's', 'e', codes.join(''));
             f(data, data.length, region, queries, start, end);
-
-            region.queries = null;
         }
 
         region.measured = true;
@@ -1693,121 +1749,213 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
 RandomAccessIterable.prototype.each = function(proc, _a) {
 	var s = this.data;
+    var region = this.measureRegion();
+    var take = region.take;
+    var takeArg = region.takeArg;
+    var p;
 	
 	if (typeof(proc) == "function") {
-		this.broken = false;
-		for (var i = 0, c = this.count(); i < c; ++i) {
-			if (proc(this.at(i), i, _a) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	} else {
-	    var dt = this._dataType;
-		var f = cache.get("each_" + dt, proc);
-
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
-			var defV, v;
-			
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = this.lambdaAt('s', '_s', '_l'); break;
-			default: defV = "var _v=" + this.lambdaAt('s', '_s', '_l') + ";"; v = "_v"; break;
-			}
-
-			f = new Function(alias, "s", "_l", "_s", "_e", "a",
-                "for(var _i=0;_s<_e;++_s,++_i){" + defV + "if((" + lambdaJoin(splited, v, "_i", "a") + ")===false){return true;}}return false;");
-			cache.set("each_" + dt, proc, f);
-		}
-
-        var region = this.measureRegion();
-		this.broken = f($from, s, s.length, region.start, region.end, _a);
+        p = proc;
+        proc = '_p($,$$,@)';
 	}
 
+    if (take) {
+        if (typeof take == 'string') {
+            proc = '!(' + lambdaReplace(take, '$', '$$', '_tla') + ')?_b=false:' + proc;
+        } else {
+            proc = '!_tl($,$$,_tla)?_b=false:' + proc;
+        }
+    }
+
+    var dt = this.dataType + (this.rev ? '_reversed' : '');
+    var f = cache.get("each_" + dt, proc);
+
+    if (!f) {
+        var splited = [];
+        var hints = lambdaGetUseCount(proc, 3, splited);
+        var defV, v;
+
+        var i1, i2;
+        if (!this.rev) {
+            i1 = ''; i2 = '_s';
+        } else {
+            if (hints[1] == 0) {
+                i1 = ''; i2 = '_e-1';
+            } else {
+                i1 = 'var _i=_e-1;'; i2 = '_i';
+            }
+        }
+
+        var srcIncrement;
+        if (!this.rev) {
+            srcIncrement = '++_s';
+        } else {
+            srcIncrement = '--_e';
+        }
+        
+        var vars = prepareVariables(hints,
+            '_v', this.lambdaGetItem('s', i2, '_l'));
+
+        f = new Function(alias, "s", "_l", "_s", "_e", "a", "_tl", "_tla", "_p",
+            ["var _b=true;for(;_s<_e;", srcIncrement, "){", i1, vars.decl,
+            "if((", lambdaJoin(splited, vars._v, i2, "a"), ")===false){return _b;}}return false;"].join(''));
+        cache.set("each_" + dt, proc, f);
+    }
+
+    this.broken = f($from, s, s.length, region.start, region.end, _a, take, takeArg, p);
+
 	return this;
+};
+
+RandomAccessIterable.prototype.at = function(index) {
+    var r = this.measureRegion();
+    if (!this.rev) {
+	    return this.getItem(this.data, r.start + index);
+    } else {
+	    return this.getItem(this.data, r.end - index);
+    }
 };
 
 RandomAccessIterable.prototype.count = function(pred, arg) {
 	if (!pred) {
         var r = this.measureRegion();
-		return r.end - r.start;
+        if (!r.take) {
+		    return r.end - r.start;
+        }
 	}
-	else {
-		return Iterable.prototype.count.call(this, pred, arg);
-	}
+
+    return Iterable.prototype.count.call(this, pred, arg);
 };
 
 RandomAccessIterable.prototype.any = function (pred, arg) {
     if (!pred) {
-        return this.count() > 0;
-    } else {
-		return Iterable.prototype.any.call(this, pred, arg);
+        var r = this.measureRegion();
+        if (!r.take) {
+            return r.start < r.end;
+        }
     }
+
+    return Iterable.prototype.any.call(this, pred, arg);
 };
 
 RandomAccessIterable.prototype.first = function(pred, arg) {
 	if (!pred) {
-		if (this.count() > 0) {
-			return this.at(0);
-		}
+        var r = this.measureRegion();
+        if (!r.take) {
+            var s = r.start;
+            var e = r.end;
+
+            if (s < e) {
+                if (!this.rev) {
+			        return this.getItem(this.data, s);
+                } else {
+                    return this.getItem(this.data, e - 1);
+                }
+            } else {
+                return;
+            }
+        }
 	}
-	else {
-		return Iterable.prototype.first.call(this, pred, arg);
-	}
+
+    return Iterable.prototype.first.call(this, pred, arg);
 };
 
 RandomAccessIterable.prototype.last = function(pred, arg) {
 	if (!pred) {
-		var l = this.count();
-		if (l > 0) {
-			return this.at(l - 1);
-		}
+        var r = this.measureRegion();
+        if (!r.take) {
+            var s = r.start;
+            var e = r.end;
+
+            if (s < e) {
+                if (!this.rev) {
+                    return this.getItem(this.data, e - 1);
+                } else {
+                    return this.getItem(this.data, s);
+                }
+            } else {
+                return;
+            }
+        }
 	}
-	else {
-		return this.reverse().first(pred, arg);
-	}
+    
+    return Iterable.prototype.last.call(this, pred, arg);
+};
+
+RandomAccessIterable.prototype.reverse = function () {
+    this.rev = !this.rev;
+    this.reverseRegion();
+    return this;
 };
 
 RandomAccessIterable.prototype.skip = function (count) {
-    this.addRegionQuery('skipLeft', count, null);
+    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', count, null);
     return this;
 };
 
 RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
-    this.addRegionQuery('skipLeft', pred, arg);
+    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', pred, arg);
+    return this;
+};
+
+RandomAccessIterable.prototype.take = function (count) {
+    if (count < 0) {
+        this.addRegionQuery(!this.rev ? 'takeRight' : 'takeLeft', -count, null);
+    } else {
+        this.addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', count, null);
+    }
+    return this;
+};
+
+RandomAccessIterable.prototype.takeWhile = function (pred, arg) {
+    this.addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', pred, arg);
     return this;
 };
 
 RandomAccessIterable.prototype.toArray = function () {
-    var l = this.count();
+    var r = this.measureRegion();
+    if (!r.take) {
+        var get = this.getItem;
+        var data = this.data;
+        var s = r.start;
+        var e = r.end;
 
-    var result = new Array(l);
-    for (var i = 0; i < l; ++i) {
-        result[i] = this.at(i);
+        var result = new Array(e - s);
+        if (!this.rev) {
+            for (var i = s; i < e; ++i) {
+                result[i - s] = get(data, i);
+            }
+        } else {
+            for (var i = e; i > s; --i) {
+                result[e - i] = get(data, i - 1);
+            }
+        }
+
+        return result;
     }
 
-    return result;
+    return Iterable.prototype.toArray.call(this);
 };
 
 RandomAccessIterable.prototype.trim = function(left, right, arg) {
     var args = getTrimmingArgument(left, right, arg);
 
-    this.addRegionQuery('skipLeft', args.left, args.leftArg);
-    this.addRegionQuery('skipRight', args.right, args.rightArg);
+    this.addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', args.left, args.leftArg);
+    this.addRegionQuery(!this.rev ? 'skipRight' : 'skipLeft', args.right, args.rightArg);
     return this;
 };
 
+// TODO: revese 처리 아직 안됨
 RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
     var rs;
     if (typeof(resultSelector) == "string") {
         var splited = [];
-	    var hint = lambdaGetHint(resultSelector, 5, splited);
+	    var hint = lambdaGetUseCount(resultSelector, 5, splited);
 	    var v, list = [];
 
 	    switch (hint[0]) {
-	    case 0: case 1: v = this.lambdaAt('@d', '@i', '@l'); break;
-	    default: list.push("(@V=" + this.lambdaAt('@d', '@i', '@l') + ")"); v = "@V"; break;
+	    case 0: case 1: v = this.lambdaGetItem('@d', '@i', '@l'); break;
+	    default: list.push("(@V=" + this.lambdaGetItem('@d', '@i', '@l') + ")"); v = "@V"; break;
 	    }
 
 	    list.push("(" + lambdaJoin(splited, v, "$", "@i", "$$", "@a") + ")");
@@ -1815,7 +1963,7 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 	    rs = "(" + list.join(",") + ")";
     }
     else {
-	    rs = "@rs(" + this.lambdaAt('@d', '@i', '@l') + ",$,@i,$$,@a)";
+	    rs = "@rs(" + this.lambdaGetItem('@d', '@i', '@l') + ",$,@i,$$,@a)";
     }
 
 	var self = this;
@@ -1826,7 +1974,7 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 		var procStr;
 		if (typeof(proc) == "string") {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var v, k, list = [];
 
 			switch (hint[0]) {
@@ -1863,28 +2011,30 @@ function StringIterable(str) {
 }
 extend(RandomAccessIterable, StringIterable);
 
-StringIterable.prototype._dataType = 'string';
+StringIterable.prototype.dataType = 'string';
 
-StringIterable.prototype.lambdaAt = function (target, index) {
+StringIterable.prototype.lambdaGetItem = function (target, index) {
     return target + '.charAt(' + index + ')';
 };
 
-StringIterable.prototype.at = function(index) {
-    var r = this.measureRegion();
-	return this.data.charAt(r.start + index);
-};
-
-StringIterable.prototype.reverse = function() {
-	return new StringReversedIterable(this.data).reverseFrom(this);
+StringIterable.prototype.getItem = function (target, index) {
+    return target.charAt(index);
 };
 
 StringIterable.prototype.toString = function (separator) {
-    if (!separator) {
+    if (!separator && !this.rev) {
         var data = this.data;
         
         var r = this.measureRegion();
-        if (r.start == 0 && r.end == data.length) {
-            return data;
+        if (!r.take) {
+            var s = r.start;
+            var e = r.end;
+
+            if (s == 0 && e == data.length) {
+                return data;
+            } else {
+                return data.substring(s, e);
+            }
         }
     }
 
@@ -1896,34 +2046,6 @@ StringIterable.prototype.toJSON = function() {
 };
 
 //
-// StringReversedIterable
-//
-
-function StringReversedIterable(str) {
-    RandomAccessIterable.call(this, str);
-}
-extend(RandomAccessIterable, StringReversedIterable);
-
-StringReversedIterable.prototype._dataType = 'string_reversed';
-
-StringReversedIterable.prototype.lambdaAt = function (target, index, length) {
-    return target + '.charAt(' + length + '-' + index + '-1)';
-};
-
-StringReversedIterable.prototype.at = function(index) {
-    var r = this.measureRegion();
-	return this.data.charAt(r.end - index - 1);
-};
-
-StringReversedIterable.prototype.reverse = function() {
-	return new StringIterable(this.data).reverseFrom(this);
-};
-
-StringReversedIterable.prototype.toJSON = function() {
-	return quote(this.toString());
-};
-
-//
 // ArrayIterable
 //
 
@@ -1932,19 +2054,14 @@ function ArrayIterable(array) {
 }
 extend(RandomAccessIterable, ArrayIterable);
 
-ArrayIterable.prototype._dataType = 'array';
+ArrayIterable.prototype.dataType = 'array';
 
-ArrayIterable.prototype.lambdaAt = function (target, index) {
+ArrayIterable.prototype.lambdaGetItem = function (target, index) {
     return target + '[' + index + ']';
 };
 
-ArrayIterable.prototype.at = function(index) {
-    var r = this.measureRegion();
-	return this.data[r.start + index];
-};
-
-ArrayIterable.prototype.reverse = function() {
-	return new ArrayReversedIterable(this.data).reverseFrom(this);
+ArrayIterable.prototype.getItem = function (target, index) {
+    return target[index];
 };
 
 ArrayIterable.prototype.toJSON = function(track) {
@@ -1960,35 +2077,6 @@ ArrayIterable.prototype.toJSON = function(track) {
 
 	return json;
 };
-
-//
-// ArrayReversedIterable
-//
-
-function ArrayReversedIterable(array) {
-    RandomAccessIterable.call(this, array);
-}
-extend(RandomAccessIterable, ArrayReversedIterable);
-
-ArrayReversedIterable.prototype._dataType = 'array_reversed';
-
-ArrayReversedIterable.prototype.lambdaAt = function (target, index, length) {
-    return target + '[' + length + '-' + index + '-1]';
-};
-
-ArrayReversedIterable.prototype.at = function(index) {
-    var r = this.measureRegion();
-	return this.data[r.end - index - 1];
-};
-
-ArrayReversedIterable.prototype.at = function(index) {
-	var d = this.data;
-	return d[d.length - index - 1];
-};
-
-ArrayReversedIterable.prototype.reverse = function() {
-	return new ArrayIterable(this.data).reverseFrom(this);
-}
 
 //
 // ObjectIterable
@@ -2015,7 +2103,7 @@ ObjectIterable.prototype.each = function(proc, _a) {
 		var f = cache.get("each_o", proc);
 		if (!f) {   
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var defV, v;
 
 			switch (hint[0]) {
@@ -2065,7 +2153,7 @@ ObjectReversedIterable.prototype.each = function(proc, _a) {
 		var f = cache.get("each_or", proc);
 		if (!f) {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var defV, defK, v, k;
 
 			switch (hint[0]) {
@@ -2156,7 +2244,7 @@ OrderedIterable.prototype.each = function(proc, arg) {
 		var f = cache.get("each_ord", proc);
 		if (!f) {
 		    var splited = [];
-			var hint = lambdaGetHint(proc, 3, splited);
+			var hint = lambdaGetUseCount(proc, 3, splited);
 			var defV, defK, v, k;
 
 			switch (hint[0]) {
@@ -2299,7 +2387,7 @@ $from.setAlias = function (newAlias) {
 $from.lambda = {
 	replace: lambdaReplace,
 	parse: lambdaParse,
-	getHint: lambdaGetHint,
+	getHint: lambdaGetUseCount,
 	join: lambdaJoin
 };
 
