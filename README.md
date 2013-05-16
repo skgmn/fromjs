@@ -355,18 +355,94 @@ from.range(3, 13, 3)
 
 ## Supported queries
 
-
+* [aggregate](https://github.com/suckgamoni/fromjs/wiki/aggregate(seed, func[, arg]%29)
+* [all](https://github.com/suckgamoni/fromjs/wiki/all(predicate[, arg]%29)
+* [any](https://github.com/suckgamoni/fromjs/wiki/any([predicate, arg]%29)
+* [at](https://github.com/suckgamoni/fromjs/wiki/at(index%29)
+* [atOrDefault](https://github.com/suckgamoni/fromjs/wiki/atOrDefault(index, defValue%29)
+* [average](https://github.com/suckgamoni/fromjs/wiki/average(%29)
+* [concat](https://github.com/suckgamoni/fromjs/wiki/concat(second%29)
+* [contains](https://github.com/suckgamoni/fromjs/wiki/contains(value[, comparer, arg]%29)
+* [count](https://github.com/suckgamoni/fromjs/wiki/count([predicate, arg]%29)
+* [defaultIfEmpty](https://github.com/suckgamoni/fromjs/wiki/defaultIfEmpty(defValue%29)
+* [distinct](https://github.com/suckgamoni/fromjs/wiki/distinct([comparer, arg]%29)
+* [except](https://github.com/suckgamoni/fromjs/wiki/except(second[, comparer, arg]%29)
+* [first](https://github.com/suckgamoni/fromjs/wiki/first([predicate, arg]%29)
+* [firstOrDefault](https://github.com/suckgamoni/fromjs/wiki/firstOrDefault(defValue%29 , firstOrDefault(predicate, defValue[, arg]%29)
+* [groupBy](https://github.com/suckgamoni/fromjs/wiki/groupBy(selectors[, comparer, arg]%29)
+* [groupJoin](https://github.com/suckgamoni/fromjs/wiki/groupJoin(inner, outerKeySelector, innerKeySelector, resultSelector[, comparer, arg]%29)
+* [intersect](https://github.com/suckgamoni/fromjs/wiki/intersect(second[, comparer, arg]%29)
+* [join](https://github.com/suckgamoni/fromjs/wiki/join(inner, outerKeySelector, innerKeySelector, resultSelector[, comparer, arg]%29)
+* [last](https://github.com/suckgamoni/fromjs/wiki/last([predicate, arg]%29)
+* [lastOrDefault](https://github.com/suckgamoni/fromjs/wiki/lastOrDefault(defValue%29 , lastOrDefault(predicate, defValue[, arg]%29)
+* [max](https://github.com/suckgamoni/fromjs/wiki/max([selector, arg]%29)
+* [min](https://github.com/suckgamoni/fromjs/wiki/min([selector, arg]%29)
+* [orderBy](https://github.com/suckgamoni/fromjs/wiki/orderBy(keySelector[, comparer, arg]%29)
+* [orderByDesc](https://github.com/suckgamoni/fromjs/wiki/orderByDesc(keySelector[, comparer, arg]%29)
+* [reverse](https://github.com/suckgamoni/fromjs/wiki/reverse(%29)
+* [select](https://github.com/suckgamoni/fromjs/wiki/select(selector[, arg]%29)
+* [selectMany](https://github.com/suckgamoni/fromjs/wiki/selectMany(selector[, arg]%29)
+* [selectPair](https://github.com/suckgamoni/fromjs/wiki/selectPair(valueSelector, keySelector[, arg]%29)
+* [sequenceEqual](https://github.com/suckgamoni/fromjs/wiki/sequenceEqual(second[, comparer, arg]%29)
+* [single](https://github.com/suckgamoni/fromjs/wiki/single([predicate, arg]%29)
+* [singleOrDefault](https://github.com/suckgamoni/fromjs/wiki/singleOrDefault(defValue%29 , singleOrDefault(predicate, defValue[, arg]%29)
+* [skip](https://github.com/suckgamoni/fromjs/wiki/skip(count%29)
+* [skipWhile](https://github.com/suckgamoni/fromjs/wiki/skipWhile(predicate[, arg]%29)
+* [sum](https://github.com/suckgamoni/fromjs/wiki/sum(%29)
+* [take](https://github.com/suckgamoni/fromjs/wiki/take(count%29)
+* [takeWhile](https://github.com/suckgamoni/fromjs/wiki/takeWhile(predicate[, arg]%29)
+* [thenBy](https://github.com/suckgamoni/fromjs/wiki/thenBy(keySelector[, comparer, arg]%29)
+* [thenByDesc](https://github.com/suckgamoni/fromjs/wiki/thenByDesc(keySelector[, comparer, arg]%29)
+* [toArray](https://github.com/suckgamoni/fromjs/wiki/toArray(%29)
+* [toJSON](https://github.com/suckgamoni/fromjs/wiki/toJSON(%29)
+* [toString](https://github.com/suckgamoni/fromjs/wiki/toString([separator]%29)
+* [toURLEncoded](https://github.com/suckgamoni/fromjs/wiki/toURLEncoded(%29)
+* [trim](https://github.com/suckgamoni/fromjs/wiki/trim([left, right, arg]%29)
+* [union](https://github.com/suckgamoni/fromjs/wiki/union(second[, comparer, arg]%29)
+* [where](https://github.com/suckgamoni/fromjs/wiki/where(predicate[, arg]%29)
+* [zip](https://github.com/suckgamoni/fromjs/wiki/zip(second, resultSelector[, arg]%29)
 
 ## Some practical examples
 
-A function which determine whether the given _n_ is prime number or not.
-
 ```javascript
+// Determine either n is a prime number.
 function isPrime(n) {
     return n == 2 ||
         (n % 2 == 1 &&
         !from.range(3, n, 2)
-            .takeWhile("$ * $ <= @", n)
-            .any("@ % $ == 0", n));
+            .takeWhile('$ * $ <= @', n)
+            .any('@ % $ == 0', n));
 }
+
+// Get prime numbers bigger than n.
+// Returns [count] numbers in a array, or a single number if count is zero.
+function getPrimeBiggerThan(n, count) {
+    n = parseInt(n) + 1;
+    if (n % 2 == 0) ++n;
+
+    var query = from.range(n, Infinity, 2).where('@($)', isPrime);
+    if (!count) {
+        return query.first();
+    } else {
+        return query.take(count).toArray();
+    }
+}
+
+console.log(getPrimeBiggerThan(10, 5));
+
+// [ 11, 13, 17, 19, 23 ]
+```
+
+```javascript
+function splitTrimmed(s, delimiter) {
+    return from(s.split(delimiter))
+                .select('from($).trim().toString()')
+                .where('$length > 0')
+                .toArray();
+}
+
+var s = splitTrimmed('  a |  b  |  c  |  |  d  |  |  ', '|');
+console.log(s);
+
+// [ 'a', 'b', 'c', 'd' ]
 ```
