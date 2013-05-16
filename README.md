@@ -446,3 +446,14 @@ console.log(s);
 
 // [ 'a', 'b', 'c', 'd' ]
 ```
+
+```javascript
+var array = [1, 2, 3];
+
+// Make a shallow copy of a array
+var copy = from(array).toArray();
+
+array.push(4);
+console.log(copy);
+// [ 1, 2, 3 ]
+```
