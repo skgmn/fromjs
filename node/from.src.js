@@ -12,6 +12,8 @@
 var alias = 'from';
 
 var defaultTrimmingTarget = [undefined, null, false, 0, ' ', '\n', '\t'];
+var defaultTrimmingPredicateArray = '@t.indexOf($)>=0';
+var defaultTrimmingPredicateIterable = '@t.contains($)';
 
 function isNumber(str) {
 	return /^[0-9]+$/.exec(str) ? true : false;
@@ -306,7 +308,7 @@ function getTrimmingArgument(left, right, arg) {
     var rightTarget;
     
     if (!left || left instanceof Array) {
-        leftTarget = defaultTrimmingTarget;
+        leftTarget = (!left ? defaultTrimmingTarget : left);
         left = defaultTrimmingPredicateArray;
     } else if (left instanceof Iterable) {
         leftTarget = defaultTrimmingTarget;
@@ -316,7 +318,7 @@ function getTrimmingArgument(left, right, arg) {
     }
 
     if (!right || right instanceof Array) {
-        rightTarget = defaultTrimmingTarget;
+        rightTarget = (!right ? defaultTrimmingTarget : right);
         right = defaultTrimmingPredicateArray;
     } else if (right instanceof Iterable) {
         rightTarget = defaultTrimmingTarget;

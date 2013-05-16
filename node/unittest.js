@@ -1013,6 +1013,21 @@ exports['toJSON() test'] = function (test) {
     test.done();
 };
 
+exports['trim() test'] = function (test) {
+    var trimChars = ['-', ' '];
+    var s = from('--- Hello-world! ---')
+                .trim(trimChars, trimChars)
+                .toString();
+    test.ok(s == 'Hello-world!');
+
+    s = from('// // comment')
+            .trim('($ == "/" || $ == " ") && $$ <= 2')
+            .toString();
+    test.ok(s == '// comment');
+
+    test.done();
+};
+
 exports['union() test'] = function (test) {
     var ints1 = [ 5, 3, 9, 7, 5, 9, 3, 7 ];
     var ints2 = [ 8, 3, 6, 4, 4, 9, 1, 0 ];
