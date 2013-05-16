@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.0
+ * from.js for node v2.1.1
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -101,7 +101,7 @@ function lambdaGetUseCount(str, argCount, splited) {
 					    nextPrefixToAdd = expandAbbreviated(s, 2, '');
 					}
 				}
-				else if (l == 1 || !(s in global)) {
+				else /*if (l == 1 || !(s in global))*/ {
 					++hint[0];
 					
 					if (splited) {
@@ -180,7 +180,7 @@ function lambdaReplace(str, v, k) {
 				var l = s.length;
 				if (l >= 2 && s[1] == "$") {
 					return expandAbbreviated(s, 2, k);
-				} else if (l == 1 || !(s in global)) {
+				} else /*if (l == 1 || !(s in global))*/ {
 					return expandAbbreviated(s, 1, v);
 				}
 			}
@@ -2433,7 +2433,7 @@ from.setAlias = function (newAlias) {
 from.lambda = {
 	replace: lambdaReplace,
 	parse: lambdaParse,
-	getHint: lambdaGetUseCount,
+	getUseCount: lambdaGetUseCount,
 	join: lambdaJoin
 };
 
