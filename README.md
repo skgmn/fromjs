@@ -8,7 +8,7 @@ from.js is a super fast, extremely-optimized LINQ engine for JavaScript.
 * Supports lambda expression
 
 ## Supported platforms
-* Web (working)
+* Web
 * node.js
 
 ## Concept
