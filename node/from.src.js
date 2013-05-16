@@ -10,7 +10,7 @@
 // Beginning of code
 
 var alias = 'from';
-var defaultTrimmingTarget = [0, ' ', '\n', '\t'];
+var defaultTrimmingTarget = [undefined, null, 0, ' ', '\n', '\t'];
 var defaultTrimmingPredicateArray = '@.indexOf($)>=0';
 var defaultTrimmingPredicateIterable = '@.contains($)';
 
