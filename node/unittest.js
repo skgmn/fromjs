@@ -1,6 +1,6 @@
 // Unit test using nodeunit
 
-var from = require('./from.src');
+var from = require('../from.src');
 
 exports['test1'] = function (test) {
     var n = 17;

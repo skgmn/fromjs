@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.1
+ * from.js for node v2.1.2
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -225,7 +225,7 @@ function lambdaParse(str, argCount) {
 
 	if (names) {
 		names.push("return " + str + ";");
-		return Function.apply(global, names);
+		return Function.apply(null, names);
 	}
 	else {
 		names = [];
@@ -237,7 +237,7 @@ function lambdaParse(str, argCount) {
 		str = lambdaReplace.apply(null, params);
 
 		names.push("return " + str + ";");
-		return Function.apply(global, names);
+		return Function.apply(null, names);
 	}
 }
 
@@ -1005,11 +1005,11 @@ Iterable.prototype.min = function(selector, arg) {
 };
 
 Iterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, false, arg);
+	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, 1, arg);
 };
 
 Iterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, true, arg);
+	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, -1, arg);
 };
 
 Iterable.prototype.reverse = function() {
@@ -1907,6 +1907,14 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
     return Iterable.prototype.last.call(this, pred, arg);
 };
 
+RandomAccessIterable.prototype.orderBy = function(keySelector, comparer, arg) {
+	return new OrderedRandomAccessIterable(this)._addContext(keySelector || "$", comparer, 1, arg);
+};
+
+RandomAccessIterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
+	return new OrderedRandomAccessIterable(this)._addContext(keySelector || "$", comparer, -1, arg);
+};
+
 RandomAccessIterable.prototype.reverse = function () {
     return this.clone().reverseRegion();
 };
@@ -2223,13 +2231,13 @@ ObjectReversedIterable.prototype.reverse = function() {
 // OrderedIterable
 //
 
-function OrderedIterable(Iterable) {
-	this.Iterable = Iterable;
+function OrderedIterable(it) {
+	this.it = it;
 }
 extend(ObjectIterable, OrderedIterable);
 
 OrderedIterable.prototype.clone = function () {
-    var o = new this.constructor(this.Iterable);
+    var o = new this.constructor(this.it);
     var ctx = this.context;
 
     if (ctx) {
@@ -2239,7 +2247,7 @@ OrderedIterable.prototype.clone = function () {
     return o;
 };
 
-OrderedIterable.prototype._addContext = function(keySelector, comparer, desc, arg) {
+OrderedIterable.prototype._addContext = function(keySelector, comparer, asc, arg) {
     var ctx = this.context;
     if (!ctx) {
         this.context = ctx = [];
@@ -2248,7 +2256,7 @@ OrderedIterable.prototype._addContext = function(keySelector, comparer, desc, ar
 	ctx.push({
 		keySelector: lambdaParse(keySelector, 3),
 		comparer: lambdaParse(comparer, 3),
-		desc: desc,
+		asc: asc,
 		arg: arg
 	});
 
@@ -2257,7 +2265,7 @@ OrderedIterable.prototype._addContext = function(keySelector, comparer, desc, ar
 
 OrderedIterable.prototype.each = function(proc, arg) {
 	var row = [];
-	this.Iterable.each("@push($$),@push($),0", row);
+	this.it.each("@push($$),@push($),0", row);
 
 	var indices = from.range(row.length / 2).toArray();
 
@@ -2273,13 +2281,13 @@ OrderedIterable.prototype.each = function(proc, arg) {
 
                 var compared;
                 if (!ctx.comparer) {
-                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -1 : 1));
+                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -ctx.asc : ctx.asc));
                 }
                 else {
-                    compared = ctx.comparer(aSelected, bSelected, ctx.arg);
+                    compared = ctx.asc * ctx.comparer(aSelected, bSelected, ctx.arg);
                 }
 
-                if (compared != 0) return (ctx.desc ? -1 : 1) * compared;
+                if (compared != 0) return compared;
             }
         }
 
@@ -2326,11 +2334,88 @@ OrderedIterable.prototype.each = function(proc, arg) {
 };
 
 OrderedIterable.prototype.thenBy = function(keySelector, comparer, arg) {
-	return this.clone()._addContext(keySelector, comparer, false, arg);
+	return this.clone()._addContext(keySelector, comparer, 1, arg);
 };
 
 OrderedIterable.prototype.thenByDesc = function(keySelector, comparer, arg) {
-	return this.clone()._addContext(keySelector, comparer, true, arg);
+	return this.clone()._addContext(keySelector, comparer, -1, arg);
+};
+
+//
+// OrderedRandomAccessIterable
+//
+
+function OrderedRandomAccessIterable(it) {
+    this.it = it;
+}
+extend(OrderedIterable, OrderedRandomAccessIterable);
+
+OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
+    var indices = this.it.select('$$').toArray();
+    
+    var data = this.it.data;
+	var contexts = this.context;
+
+	function f(a, b) {
+        if (contexts) {
+            for (var i = 0, l = contexts.length; i < l; ++i) {
+                var ctx = contexts[i];
+
+                var aSelected = ctx.keySelector(data[a], a, ctx.arg);
+                var bSelected = ctx.keySelector(data[b], b, ctx.arg);
+
+                var compared;
+                if (!ctx.comparer) {
+                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -ctx.asc : ctx.asc));
+                }
+                else {
+                    compared = ctx.asc * ctx.comparer(aSelected, bSelected, ctx.arg);
+                }
+
+                if (compared != 0) return compared;
+            }
+        }
+
+		return (a == b ? 0 : (a < b ? -1 : 1));
+	}
+
+	indices.sort(f);
+
+	if (typeof(proc) == "string") {
+		var f = cache.get("each_ordered_random_access", proc);
+		if (!f) {
+		    var splited = [];
+			var hint = lambdaGetUseCount(proc, 3, splited);
+			var defV, defK, v, k;
+
+			switch (hint[1]) {
+			case 0: defK = ""; k = "l[i]"; break;
+			default: defK = "var k=l[i];"; k = "k"; break;
+			}
+
+			switch (hint[0]) {
+			case 0: case 1: defV = ""; v = "r[" + k + "]"; break;
+			default: defV = "var v=r[" + k + "];"; v = "v"; break;
+			}
+
+			f = new Function(alias, "l", "r", "a",
+			    "for(var i=0,c=l.length;i<c;++i){" + defK + defV + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
+			cache.set("each_ordered_random_access", proc, f);
+		}
+		this.broken = f(from, indices, data, arg);
+	}
+	else {
+		this.broken = false;
+		for (var i = 0, l = indices.length; i < l; ++i) {
+			var index = indices[i];
+			if (proc(data[index], index, arg) === false) {
+				this.broken = true;
+				break;
+			}
+		}
+	}
+
+	return this;
 };
 
 function from(obj) {
@@ -2437,7 +2522,11 @@ from.lambda = {
 	join: lambdaJoin
 };
 
-module.exports = from;
+if (module && module.exports) {
+    module.exports = from;
+} else {
+    window.from = from;
+}
 
 // End of code
 

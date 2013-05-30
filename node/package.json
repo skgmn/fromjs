@@ -1,13 +1,14 @@
 {
     "name": "fromjs",
     "description": "Powerful LINQ engine for JavaScript",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "author": {
         "name": "suckgamoni",
         "email": "suckgamony@gmail.com"
     },
     "keywords": [
-        "LINQ", "functional"
+        "LINQ", "Functional", "Enumerable", "Array", "Arrays",
+        "Collections", "String", "Strings"
     ],
     "dependencies": {
     },
