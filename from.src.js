@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.2
+ * from.js for node v2.1.3
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -8,6 +8,24 @@
 
 
 // Beginning of code
+
+var platform = 'web';
+
+var platformList = {
+    'nodejs': function () {
+        return module && module.exports;
+    }
+};
+
+for (var key in platformList) {
+    try {
+        if (platformList[key]()) {
+            platform = key;
+            break;
+        }
+    } catch (_) {
+    }
+}
 
 var alias = 'from';
 
@@ -688,6 +706,16 @@ Iterable.prototype.distinct = function(comparer, arg) {
 	};
 
 	return new Iterable(it);
+};
+
+Iterable.prototype.dump = function () {
+    if (platform == 'nodejs') {
+        this.each('console.log("key = " + $$ + ", value = " + $)');
+    } else {
+        this.each('document.writeln("key = " + $$ + ", value = " + $ + "<br/>")');
+    }
+    
+    return this;
 };
 
 Iterable.prototype.except = function(second, comparer, arg0) {
@@ -2522,7 +2550,7 @@ from.lambda = {
 	join: lambdaJoin
 };
 
-if (module && module.exports) {
+if (platform == 'nodejs') {
     module.exports = from;
 } else {
     window.from = from;
