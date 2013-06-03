@@ -11,10 +11,10 @@ from.js is a super fast, extremely-optimized LINQ engine for JavaScript.
 * Web
 * node.js
 
-## Concept
+## This is intended to
 
-* Intended to make it easy to use LINQ in JavaScript for whom is familiar with .NET environment.
-* To provide LINQ features without worrying about performance.
+* make it easy to use LINQ in JavaScript for whom is familiar with .NET environment.
+* provide LINQ features to JavaScript developers without worrying about performance.
 
 ## Importing module
 
@@ -383,6 +383,14 @@ from(myRe).match(str)
   Found abb. Next match starts at 3
   Found ab. Next match starts at 9
 */
+```
+
+```javascript
+var str = 'Hello world!';
+console.log(from(/Hello/g).match(str).any()); // true
+console.log(from(/Hello/g, str).any()); // true
+
+console.log(from(/W3Schools/g, str).any()); // false
 ```
 
 ## Supported queries
