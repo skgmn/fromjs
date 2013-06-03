@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.4
+ * from.js for node v2.1.4.1
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -13,17 +13,14 @@ var platform = 'web';
 
 var platformList = {
     'nodejs': function () {
-        return module && module.exports;
+        return typeof module !== 'undefined' && module.exports;
     }
 };
 
 for (var key in platformList) {
-    try {
-        if (platformList[key]()) {
-            platform = key;
-            break;
-        }
-    } catch (_) {
+    if (platformList[key]()) {
+        platform = key;
+        break;
     }
 }
 
@@ -2493,23 +2490,35 @@ RegExpIterable.prototype.each = function (proc, arg) {
 	    }
 
         var m = this._r.exec(this._str);
-        this.broken = (proc(m, 0, arg) === false);
+        this.broken = (m ? proc(m, 0, arg) === false : false);
 	}
 
     return this;
 };
 
-function from(obj) {
+RegExpIterable.prototype.any = function (pred, arg) {
+    if (!pred) {
+        return this._r.test(this._str);
+    } else {
+        return Iterable.prototype.any.call(this, pred, arg);
+    }
+};
+
+function from(obj, target) {
     if (!obj) {
 	    return new Iterable(function() { return this; });
     } else if (obj instanceof Iterable) {
 		return obj;
     } else if (obj instanceof RegExp) {
-        return {
-            match: function(str) {
-                return new RegExpIterable(obj, str);
-            }
-        };
+        if (target) {
+            return new RegExpIterable(obj, target);
+        } else {
+            return {
+                match: function(str) {
+                    return new RegExpIterable(obj, str);
+                }
+            };
+        }
     } else if (obj.$each) {
 		var f = function(proc, arg) { this.broken = (obj.$each(proc, arg) === false); return this; };
 		return new Iterable(f);

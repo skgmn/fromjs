@@ -90,6 +90,10 @@ test('regular expression test', function () {
                 break;
             }
         });
+        
+    var str = 'Hello world!';
+    ok(from(/Hello/g, str).any());
+    ok(!from(/W3Schools/g, str).any());        
 });
 
 test('range() test', function () {

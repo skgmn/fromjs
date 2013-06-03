@@ -96,6 +96,10 @@ exports['regular expression test'] = function (test) {
             }
         });
         
+    var str = 'Hello world!';
+    test.ok(from(/Hello/g, str).any());
+    test.ok(!from(/W3Schools/g, str).any());        
+        
     test.done();
 };
 
