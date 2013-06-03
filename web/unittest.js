@@ -73,6 +73,25 @@ test('test5', function () {
     
 });
 
+test('regular expression test', function () {
+    from(/ab*/g).match('abbcdefabh')
+        .each(function (m, i) {
+            switch (i) {
+            case 0:
+                ok(m == 'abb' && m.index == 0);
+                break;
+                
+            case 1:
+                ok(m == 'ab' && m.index == 7);
+                break;
+                
+            default:
+                ok(false);
+                break;
+            }
+        });
+});
+
 test('range() test', function () {
     var squares = from.range(4).select("$ * $").toArray();
     ok(

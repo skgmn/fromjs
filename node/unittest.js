@@ -78,6 +78,27 @@ exports['test5'] = function (test) {
     test.done();
 };
 
+exports['regular expression test'] = function (test) {
+    from(/ab*/g).match('abbcdefabh')
+        .each(function (m, i) {
+            switch (i) {
+            case 0:
+                test.ok(m == 'abb' && m.index == 0);
+                break;
+                
+            case 1:
+                test.ok(m == 'ab' && m.index == 7);
+                break;
+                
+            default:
+                test.ok(false);
+                break;
+            }
+        });
+        
+    test.done();
+};
+
 exports['range() test'] = function (test) {
     var squares = from.range(4).select("$ * $").toArray();
     test.ok(

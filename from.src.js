@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.3
+ * from.js for node v2.1.4
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -2446,12 +2446,71 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
 	return this;
 };
 
+//
+// RegExpIterable
+//
+
+function RegExpIterable(r, str) {
+    this._r = r;
+    this._str = str;
+}
+extend(Iterable, RegExpIterable);
+
+RegExpIterable.prototype.each = function (proc, arg) {
+    if (this._r.global) {
+	    var s = this.data;
+        var p;
+	
+	    if (typeof(proc) == "function") {
+            p = proc;
+            proc = '_p($,$$,@)';
+	    }
+
+        var f = cache.get("each_regexp", proc);
+
+        if (!f) {
+            var splited = [];
+            var hints = lambdaGetUseCount(proc, 3, splited);
+            var i1, i2;
+            
+            if (hints[1] == 0) {
+                i1 = '';
+                i2 = '';
+            } else {
+                i1 = 'var _i=0';
+                i2 = '++_i';
+            }
+
+            f = new Function(alias, "_r", "_s", '_a', "_p",
+                ["var _m;for(", i1, ';_m=_r.exec(_s);', i2, "){if((", lambdaJoin(splited, '_m', '_i', "_a"), ")===false){return true;}}return false;"].join(''));
+            cache.set("each_regexp", proc, f);
+        }
+
+        this.broken = f(from, this._r, this._str, arg, p);
+	} else {
+	    if (typeof proc == 'string') {
+	        proc = lambdaParse(proc, 3);
+	    }
+
+        var m = this._r.exec(this._str);
+        this.broken = (proc(m, 0, arg) === false);
+	}
+
+    return this;
+};
+
 function from(obj) {
     if (!obj) {
 	    return new Iterable(function() { return this; });
     } else if (obj instanceof Iterable) {
 		return obj;
-	} else if (obj.$each) {
+    } else if (obj instanceof RegExp) {
+        return {
+            match: function(str) {
+                return new RegExpIterable(obj, str);
+            }
+        };
+    } else if (obj.$each) {
 		var f = function(proc, arg) { this.broken = (obj.$each(proc, arg) === false); return this; };
 		return new Iterable(f);
 	} else if (typeof(obj) == "string") {
