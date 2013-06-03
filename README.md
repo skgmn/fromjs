@@ -13,7 +13,8 @@ from.js is a super fast, extremely-optimized LINQ engine for JavaScript.
 
 ## Concept
 
-from.js is intended to make it easy to use LINQ in JavaScript for whom is familiar with .NET environment. Most functions are adopted from .NET, and some features are modified/added to utilize characteristics of JavaScript.
+* Intended to make it easy to use LINQ in JavaScript for whom is familiar with .NET environment.
+* To provide LINQ features without worrying about performance.
 
 ## Importing module
 
@@ -350,6 +351,37 @@ from.range(3, 13, 3)
  36
  81
  144
+*/
+```
+
+## Repeator
+
+```javascript
+console.log(from.repeat('a', 4).toString());
+
+/*
+ This code produces the following output:
+ aaaa
+*/
+```
+
+## Regular expression iteration
+
+```javascript
+var myRe = /ab*/g;
+var str = "abbcdefabh";
+
+from(myRe).match(str)
+    .each(function (m) {
+        console.log('Found ' + m +
+            '. Next match starts at ' + (m.index + m[0].length));
+    });
+
+/*
+ This code produces the following output:
+
+  Found abb. Next match starts at 3
+  Found ab. Next match starts at 9
 */
 ```
 
