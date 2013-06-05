@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.3
+ * from.js for node v2.1.5.4
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -1674,7 +1674,10 @@ RandomAccessIterable.prototype.clone = function () {
 
         var q = r.queries;
         if (q) {
-            rr.queries = from(q).toArray();
+            var qq = rr.queries = [];
+            for (var i = 0, c = q.length; i < c; ++i) {
+                qq.push(q[i]);
+            }
         }
     }
     
@@ -1726,7 +1729,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
                 if (type == 'skipLeft') {
                     if (typeof proc == 'number') {
-                        codes.push('s=Math.min(e,s+' + proc + ');'); 
+                        start = Math.min(end, start + proc);
+                        //codes.push('s=Math.min(e,s+' + proc + ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
                         var hints = lambdaGetUseCount(proc, 3, splited);
@@ -1743,7 +1747,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
                     }
                 } else if (type == 'skipRight') {
                     if (typeof proc == 'number') {
-                        codes.push('e=Math.max(s,e-', proc, ');'); 
+                        end = Math.max(start, end - proc);
+                        //codes.push('e=Math.max(s,e-', proc, ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
                         var hints = lambdaGetUseCount(proc, 3, splited);
@@ -1769,7 +1774,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
                     }
                 } else if (type == 'takeLeft') {
                     if (typeof proc == 'number') {
-                        codes.push('e=Math.min(e,s+', proc, ');');
+                        end = Math.min(end, start + proc);
+                        //codes.push('e=Math.min(e,s+', proc, ');');
                     } else {
                         if (i == c - 3 && !this.rev) {
                             region.take = proc;
@@ -1792,7 +1798,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
                     }
                 } else if (type == 'takeRight') {
                     if (typeof proc == 'number') {
-                        codes.push('s=Math.max(s,e-', proc, ');');
+                        start = Math.max(start, end - proc);
+                        //codes.push('s=Math.max(s,e-', proc, ');');
                     } else {
                         if (i == c - 3 && this.rev) {
                             region.take = proc;
@@ -1824,10 +1831,15 @@ RandomAccessIterable.prototype.measureRegion = function () {
                 }
             }
 
-            codes.push('r.start=s;r.end=e;');
+            if (codes.length > 0) {
+                codes.push('r.start=s;r.end=e;');
 
-            var f = new Function('d', 'r', 'q', 's', 'e', codes.join(''));
-            f(data, region, queries, start, end);
+                var f = new Function('d', 'r', 'q', 's', 'e', codes.join(''));
+                f(data, region, queries, start, end);
+            } else {
+                region.start = start;
+                region.end = end;
+            }
         }
 
         region.measured = true;
