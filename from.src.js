@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.4.1
+ * from.js for node v2.1.5.1
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -1640,6 +1640,8 @@ RandomAccessIterable.prototype.clone = function () {
             rr.queries = from(q).toArray();
         }
     }
+    
+    result.rev = this.rev;
 
     return result;
 };
@@ -1670,7 +1672,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
         if (start == null) start = 0;
         if (end === null) end = data.length;
 
-        region.takeLeft = region.takeLeftArg = null;
+        region.take = region.takeArg = null;
 
         var queries = region.queries;
 
@@ -1779,7 +1781,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
                                 'if(!(', lambdaJoin(splited, vars._v, i2, vars._a), ')){break;}}');
                         } else {
                             codes.push('for(var _s2=s,s=e;s>_s2;--s){var _i=s-1;',
-                                'if(!q[', i + 1, '](', this.labmdaGetItem('d', '_i'), ',_i,q[', i + 2, '])){break;}}');
+                                'if(!q[', i + 1, '](', this.lambdaGetItem('d', '_i'), ',_i,q[', i + 2, '])){break;}}');
                         }
                     }
                 }
@@ -1798,61 +1800,81 @@ RandomAccessIterable.prototype.measureRegion = function () {
 };
 
 RandomAccessIterable.prototype.each = function(proc, _a) {
-	var s = this.data;
+	var data = this.data;
     var region = this.measureRegion();
     var take = region.take;
     var takeArg = region.takeArg;
     var p;
-	
-	if (typeof(proc) == "function") {
-        p = proc;
-        proc = '_p($,$$,@)';
-	}
-
-    if (take) {
-        if (typeof take == 'string') {
-            proc = '!(' + lambdaReplace(take, '$', '$$', '_tla') + ')?_b=false:' + proc;
-        } else {
-            proc = '!_tl($,$$,_tla)?_b=false:' + proc;
+    
+    var typeProc = typeof proc;
+    var typeTake = typeof take;
+    
+    if (typeProc == 'function' && (!take || typeTake == 'function')) {
+        this.broken = false;
+        
+        var rev = this.rev;
+        for (var s = region.start, e = region.end; s < e; !rev ? ++s : --e) {
+            var key = (!rev ? s : e - 1);
+            var value = data[key];
+            
+            if (take && !take(value, key, takeArg)) {
+                break;
+            } else if (proc(value, key, _a) === false) {
+                this.broken = true;
+                break;
+            }
         }
-    }
+    } else {
+	    if (typeProc == "function") {
+            p = proc;
+            proc = '_p($,$$,@)';
+	    }
 
-    var dt = this.dataType + (this.rev ? '_reversed' : '');
-    var f = cache.get("each_" + dt, proc);
-
-    if (!f) {
-        var splited = [];
-        var hints = lambdaGetUseCount(proc, 3, splited);
-        var defV, v;
-
-        var i1, i2;
-        if (!this.rev) {
-            i1 = ''; i2 = '_s';
-        } else {
-            if (hints[1] == 0) {
-                i1 = ''; i2 = '_e-1';
+        if (take) {
+            if (typeTake == 'string') {
+                proc = '!(' + lambdaReplace(take, '$', '$$', '_tla') + ')?_b=false:' + proc;
             } else {
-                i1 = 'var _i=_e-1;'; i2 = '_i';
+                proc = '!_tl($,$$,_tla)?_b=false:' + proc;
             }
         }
 
-        var srcIncrement;
-        if (!this.rev) {
-            srcIncrement = '++_s';
-        } else {
-            srcIncrement = '--_e';
+        var dt = this.dataType + (this.rev ? '_reversed' : '');
+        var f = cache.get("each_" + dt, proc);
+
+        if (!f) {
+            var splited = [];
+            var hints = lambdaGetUseCount(proc, 3, splited);
+            var defV, v;
+
+            var i1, i2;
+            if (!this.rev) {
+                i1 = ''; i2 = '_s';
+            } else {
+                if (hints[1] == 0) {
+                    i1 = ''; i2 = '_e-1';
+                } else {
+                    i1 = 'var _i=_e-1;'; i2 = '_i';
+                }
+            }
+
+            var srcIncrement;
+            if (!this.rev) {
+                srcIncrement = '++_s';
+            } else {
+                srcIncrement = '--_e';
+            }
+            
+            var vars = prepareVariables(hints,
+                '_v', this.lambdaGetItem('s', i2, '_l'));
+
+            f = new Function(alias, "s", "_l", "_s", "_e", "a", "_tl", "_tla", "_p",
+                ["var _b=true;for(;_s<_e;", srcIncrement, "){", i1, vars.decl,
+                "if((", lambdaJoin(splited, vars._v, i2, "a"), ")===false){return _b;}}return false;"].join(''));
+            cache.set("each_" + dt, proc, f);
         }
-        
-        var vars = prepareVariables(hints,
-            '_v', this.lambdaGetItem('s', i2, '_l'));
 
-        f = new Function(alias, "s", "_l", "_s", "_e", "a", "_tl", "_tla", "_p",
-            ["var _b=true;for(;_s<_e;", srcIncrement, "){", i1, vars.decl,
-            "if((", lambdaJoin(splited, vars._v, i2, "a"), ")===false){return _b;}}return false;"].join(''));
-        cache.set("each_" + dt, proc, f);
+        this.broken = f(from, data, data.length, region.start, region.end, _a, take, takeArg, p);
     }
-
-    this.broken = f(from, s, s.length, region.start, region.end, _a, take, takeArg, p);
 
 	return this;
 };
