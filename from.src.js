@@ -9,11 +9,14 @@
 
 // Beginning of code
 
-var platform = 'web';
+var platform;
 
 var platformList = {
     'nodejs': function () {
         return typeof module !== 'undefined' && module.exports;
+    },
+    'web': function () {
+        return true;
     }
 };
 
@@ -29,6 +32,8 @@ var alias = 'from';
 var defaultTrimmingTarget = [undefined, null, false, 0, ' ', '\n', '\t'];
 var defaultTrimmingPredicateArray = '@t.indexOf($)>=0';
 var defaultTrimmingPredicateIterable = '@t.contains($)';
+
+var CACHE_MAX = 16;
 
 function isNumber(str) {
 	return /^[0-9]+$/.exec(str) ? true : false;
@@ -453,34 +458,55 @@ Grouper.prototype.$each = function(proc, arg) {
 // Cache
 //
 
-function Cache() {
+var cacheSlot = {};
+var cacheFifo = [];
+
+function getCacheSlot(name) {
+	var slot = cacheSlot[name];
+	if (!slot) {
+		slot = cacheSlot[name] = {};
+	}
+	
+	return slot;
 }
 
-Cache.prototype.getBucket = function(name) {
-	var cache = this.cache;
-	if (!cache) {
-		this.cache = cache = {};
+var cache = {
+    get: function (name, str) {
+        var slot = getCacheSlot(name);
+        var result = slot[str];
 
-		var self = this;
-		setTimeout(function() { self.cache = null; }, 0);
-	}
+        if (result && cacheFifo.length > 2) {
+            for (var i = 0, l = cacheFifo.length; i < l; i += 2) {
+                if (cacheFifo[i] == name && cacheFifo[i + 1] == str) {
+                    cacheFifo.splice(i, 2);
+                    cacheFifo.push(name, str);
+                    break;
+                }
+            }
+        }
+        
+        return result;
+    },
+    
+    set: function (name, str, it) {
+        var slot = getCacheSlot(name);
+        
+        var added = !(str in slot);
+        slot[str] = it;
 
-	var bucket = cache[name];
-	if (!bucket) {
-		cache[name] = bucket = {};
-	}
-	return bucket;
+        if (added) {
+            cacheFifo.push(name, str);
+            
+            var maxFifo = CACHE_MAX * 2;
+            while (cacheFifo.length > maxFifo) {
+                slot = cacheSlot[cacheFifo[0]];
+                delete slot[cacheFifo[1]];
+                
+                cacheFifo.splice(0, 2);
+            }
+        }
+    }
 };
-
-Cache.prototype.get = function(name, str) {
-	return this.getBucket(name)[str];
-};
-
-Cache.prototype.set = function(name, str, it) {
-	this.getBucket(name)[str] = it;
-};
-
-var cache = new Cache();
 
 //
 // Iterable
@@ -562,27 +588,31 @@ Iterable.prototype.all = function(pred, arg) {
 	else {
 		p = "@p($,$$,@a)";
 	}
-
-	return !this.each("!" + p + "?false:0", {a: arg, p: pred}).broken;
+	
+    return !this.each("!" + p + "?false:0", {a: arg, p: pred}).broken;
 };
 
 Iterable.prototype.any = function(pred, arg) {
-	var p;
+    var _p;
 	if (!pred) {
-		p = "true";
+	    _p = 'false';
+	} else {
+	    var p;
+	    if (typeof(pred) == "string") {
+		    p = cache.get("($_$$_a)", pred);
+		    if (!p) {
+			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
+			    cache.set("($_$$_a)", pred, p);
+		    }
+	    }
+	    else {
+		    p = "@p($,$$,@a)";
+	    }
+	    
+	    _p = p + '?false:0';
 	}
-	else if (typeof(pred) == "string") {
-		p = cache.get("($_$$_a)", pred);
-		if (!p) {
-			p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			cache.set("($_$$_a)", pred, p);
-		}
-	}
-	else {
-		p = "@p($,$$,@a)";
-	}
-
-	return this.each(p + "?false:0", {a: arg, p: pred}).broken;
+	
+   	return this.each(_p, {a: arg, p: pred}).broken;
 };
 
 Iterable.prototype.at = function(index) {
@@ -604,15 +634,13 @@ Iterable.prototype.average = function() {
 Iterable.prototype.concat = function(second) {
 	var self = this;
 	function iterator(proc, arg) {
-		this.broken = false;
 		if (self.each(proc, arg).broken) {
 			this.broken = true;
 			return this;
 		}
-		if (second.each(proc, arg).broken) {
-			this.broken = true;
-			return this;
-		}			
+		
+		this.broken = second.each(proc, arg).broken;
+    	return this;
 	}
 
 	return new Iterable(iterator);
@@ -641,23 +669,28 @@ Iterable.prototype.contains = function(value, comparer, arg) {
 };
 
 Iterable.prototype.count = function(pred, arg) {
-	var p;
+    var _p;
 	if (!pred) {
-		p = "true";
+	    _p = "++@c,0";
+	} else {
+	    var p;
+	    if (typeof(pred) == "string") {
+		    p = cache.get("($_$$_a)", pred);
+		    if (!p) {
+			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
+			    cache.set("($_$$_a)", pred, p);
+		    }
+	    }
+	    else {
+		    p = "@p($,$$,@a)";
+	    }
+	    
+	    _p = p + "?++@c:0";
 	}
-	else if (typeof(pred) == "string") {
-		p = cache.get("($_$$_a)", pred);
-		if (!p) {
-			p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			cache.set("($_$$_a)", pred, p);
-		}
-	}
-	else {
-		p = "@p($,$$,@a)";
-	}
+	
 
 	var a = {a: arg, p: pred, c: 0};
-	this.each(p + "?++@c:0", a);
+	this.each(_p, a);
 	return a.c;
 };
 
