@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.1
+ * from.js for node v2.1.5.2
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -1304,7 +1304,11 @@ Iterable.prototype.singleOrDefault = function(pred, defValue, arg) {
 };
 
 Iterable.prototype.skip = function(count) {
-    if (count <= 0) return this;
+    if (count == 0) {
+        return this;
+    } else if (count < 0) {
+        return this.reverse().skip(-count).reverse();
+    }
 
 	var self = this;
 	function iterator(proc, arg) {
@@ -2000,7 +2004,13 @@ RandomAccessIterable.prototype.reverse = function () {
 };
 
 RandomAccessIterable.prototype.skip = function (count) {
-    return this.clone().addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', count, null);
+    if (count < 0) {
+        return this.clone().addRegionQuery(!this.rev ? 'skipRight' : 'skipLeft', -count, null);
+    } else if (count > 0) {
+        return this.clone().addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', count, null);
+    } else {
+        return this;
+    }
 };
 
 RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
@@ -2010,8 +2020,10 @@ RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
 RandomAccessIterable.prototype.take = function (count) {
     if (count < 0) {
         return this.clone().addRegionQuery(!this.rev ? 'takeRight' : 'takeLeft', -count, null);
-    } else {
+    } else if (count > 0) {
         return this.clone().addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', count, null);
+    } else {
+        return from();
     }
 };
 
