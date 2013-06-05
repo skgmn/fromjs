@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.2
+ * from.js for node v2.1.5.3
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -1837,8 +1837,16 @@ RandomAccessIterable.prototype.measureRegion = function () {
 };
 
 RandomAccessIterable.prototype.each = function(proc, _a) {
-	var data = this.data;
     var region = this.measureRegion();
+    var s = region.start;
+    var e = region.end;
+    
+    if (s >= e) {
+        this.broken = false;
+        return this;
+    }
+    
+	var data = this.data;
     var take = region.take;
     var takeArg = region.takeArg;
     var p;
