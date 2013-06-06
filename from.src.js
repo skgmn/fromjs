@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.4
+ * from.js for node v2.1.5.5
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -450,8 +450,7 @@ Grouper.prototype.add = function(key, value) {
 };
 
 Grouper.prototype.$each = function(proc, arg) {
-	this.broken = !this.$o.selectPair("from($l)", "$k").each(proc, arg).broken;
-	return this;
+	return !this.$o.selectPair("from($l)", "$k").each(proc, arg).broken;
 };
 
 //
@@ -2606,6 +2605,8 @@ function from(obj, target) {
                 }
             };
         }
+    } else if (obj.$iterable) {
+        return from(obj.$iterable());
     } else if (obj.$each) {
 		var f = function(proc, arg) { this.broken = (obj.$each(proc, arg) === false); return this; };
 		return new Iterable(f);
