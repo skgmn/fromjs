@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.5
+ * from.js for node v2.1.5.6
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -2540,7 +2540,10 @@ function RegExpIterable(r, str) {
 extend(Iterable, RegExpIterable);
 
 RegExpIterable.prototype.each = function (proc, arg) {
-    if (this._r.global) {
+    var r = this._r;
+    r.lastIndex = 0;
+
+    if (r.global) {
 	    var s = this.data;
         var p;
 	
@@ -2575,7 +2578,7 @@ RegExpIterable.prototype.each = function (proc, arg) {
 	        proc = lambdaParse(proc, 3);
 	    }
 
-        var m = this._r.exec(this._str);
+        var m = r.exec(this._str);
         this.broken = (m ? proc(m, 0, arg) === false : false);
 	}
 
@@ -2584,9 +2587,23 @@ RegExpIterable.prototype.each = function (proc, arg) {
 
 RegExpIterable.prototype.any = function (pred, arg) {
     if (!pred) {
-        return this._r.test(this._str);
+        var r = this._r;
+        r.lastIndex = 0;
+
+        return r.test(this._str);
     } else {
         return Iterable.prototype.any.call(this, pred, arg);
+    }
+};
+
+RegExpIterable.prototype.first = function (pred, arg) {
+    if (!pred) {
+        var r = this._r;
+        r.lastIndex = 0;
+
+        return r.exec(this._str);
+    } else {
+        return Iterable.prototype.first.call(this, pred, arg);
     }
 };
 
