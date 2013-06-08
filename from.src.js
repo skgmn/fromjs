@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.6
+ * from.js for node v2.1.5.7
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -638,7 +638,7 @@ Iterable.prototype.concat = function(second) {
 			return this;
 		}
 		
-		this.broken = second.each(proc, arg).broken;
+		this.broken = from(second).each(proc, arg).broken;
     	return this;
 	}
 
