@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.7
+ * from.js for node v2.1.5.8
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -2086,37 +2086,30 @@ RandomAccessIterable.prototype.trim = function(left, right, arg) {
 };
 
 RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
-    var rev = this.rev;
-
     var rs;
-    var index = (!rev ? '@i' : '@l-@i-1');
+    var index = (!this.rev ? '@.s++' : '--@.e');
 
     if (typeof(resultSelector) == "string") {
-        var splited = [];
-	    var hint = lambdaGetUseCount(resultSelector, 5, splited);
-	    var list = [];
-
-        if (rev && hint[1] > 0) {
-            list.push('(@.ii=' + index + ')');
-            index = '@.ii';
-        }
-
-        var v = this.lambdaGetItem('@d', index);
-        if (hint[0] > 1) {
-            list.push("(@V=" + v + ")"); v = "@V";
-        }
-
-	    list.push("(" + lambdaJoin(splited, v, "$", index, "$$", "@a") + ")");
-
-	    rs = "(" + list.join(",") + ")";
+	    rs = "(" + lambdaReplace(resultSelector, '@.v', "$", '@.i', "$$", "@a") + ")";
     } else {
-	    rs = "@rs(" + v + ",$," + index + ",$$,@a)";
+	    rs = '@rs(@.v,$,@.i,$$,@a)';
     }
 
 	var self = this;
 	function iterator(proc, arg0) {
-		var s = self.data;
-		var l = s.length;
+		var data = self.data;
+
+        var region = self.measureRegion();
+        var s = region.start;
+        var e = region.end;
+
+        if (s >= e) {
+            this.broken = false;
+            return this;
+        }
+        
+        var take = region.take;
+        var takeArg = region.takeArg;
 
 		var procStr;
 		if (typeof(proc) == "string") {
@@ -2142,8 +2135,21 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 			procStr = "@p(" + rs + ",@k++,@a0)";
 		}
 
-        var a = {a: arg, a0: arg0, k: 0, i: 0, d: s, l: l, p: proc, rs: resultSelector, b: true};
-		this.broken = from(second).each("@.i>=@.l?@.b=false:@.r=" + procStr + ",++@.i,@.r", a).broken && !a.nb;
+        var _p = ["@.s>=@.e?@.b=false:((@.i=", index, '),(@.v=', self.lambdaGetItem('@.d', '@.i'), '),'];
+
+        if (take) {
+            if (typeof take == 'string') {
+                _p.push('!(', lambdaReplace(take, '@.v', '@.i', '@.ta'), ')');
+            } else {
+                _p.push('!@t(@.v,@.i,@.ta)');
+            }
+            _p.push('?@.b=false:(', procStr, "))");
+        } else {
+            _p.push(procStr, ')');
+        }
+
+        var a = {a: arg, a0: arg0, k: 0, d: data, s: s, e: e, p: proc, rs: resultSelector, b: true, t: take, ta: takeArg};
+		this.broken = from(second).each(_p.join(''), a).broken && a.b;
 		return this;
 	}
 
