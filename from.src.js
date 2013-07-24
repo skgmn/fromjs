@@ -62,13 +62,14 @@ function lambdaGetUseCount(str, argCount, splited) {
 	var hint;
 	var names;
 	
+    rxLambdaWithOneArg.lastIndex = 0;
 	var m = rxLambdaWithOneArg.exec(str);
 	if (m) {
 		names = [m[1]];
 		str = m[2];
 		hint = new Array(1);
 	}
-	else if (m = rxLambdaWithManyArgs.exec(str)) {
+	else if ((rxLambdaWithManyArgs.lastIndex = 0), (m = rxLambdaWithManyArgs.exec(str))) {
 		names = m[1].split(/\s*,\s*/);
 		str = m[2];
 		hint = new Array(names.length);
@@ -85,6 +86,7 @@ function lambdaGetUseCount(str, argCount, splited) {
 	var prefixToAdd = '';
 	
 	if (names) {
+        rxIds.lastIndex = 0;
 	    while (m = rxIds.exec(str)) {
 			var s = m[0];
 			for (var j = 0, l = names.length; j < l; ++j) {
@@ -105,6 +107,7 @@ function lambdaGetUseCount(str, argCount, splited) {
 	}
 	else {
     	var nextPrefixToAdd = '';
+        rxIds.lastIndex = 0;
 	    while (m = rxIds.exec(str)) {
 			var s = m[0];
 			var ch = s.charAt(0);
@@ -170,12 +173,13 @@ function lambdaGetUseCount(str, argCount, splited) {
 function lambdaReplace(str, v, k) {
 	var names;
 	
+    rxLambdaWithOneArg.lastIndex = 0;
 	var m = rxLambdaWithOneArg.exec(str);
 	if (m) {
 		names = [m[1]];
 		str = m[2];
 	}
-	else if (m = rxLambdaWithManyArgs.exec(str)) {
+	else if ((rxLambdaWithManyArgs.lastIndex = 0), (m = rxLambdaWithManyArgs.exec(str))) {
 		names = m[1].split(/\s*,\s*/);
 		str = m[2];
 	}
@@ -2230,6 +2234,19 @@ ArrayIterable.prototype.toJSON = function(track) {
 	track.pop();
 
 	return json;
+};
+
+ArrayIterable.prototype.toArray = function () {
+    if (this.rev) {
+        return RandomAccessIterable.prototype.toArray.call(this);
+    }
+    
+    var r = this.measureRegion();
+    if (!r.take) {
+        return this.data.slice(r.start, r.end);
+    }
+
+    return Iterable.prototype.toArray.call(this);
 };
 
 //
