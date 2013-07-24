@@ -116,7 +116,7 @@ function lambdaGetUseCount(str, argCount, splited) {
 			
 			if (ch == "$") {
 				var l = s.length;
-				if (l >= 2 && s[1] == "$") {
+				if (l >= 2 && s.charAt(1) == "$") {
 					++hint[1];
 					
 					if (splited) {
