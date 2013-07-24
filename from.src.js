@@ -1,5 +1,5 @@
 /**
- * from.js for node v2.1.5.8
+ * from.js for node v2.1.6
  * Copyright 2012-2013 suckgamony@gmail.com
  */
 
@@ -188,6 +188,7 @@ function lambdaReplace(str, v, k) {
 	var a = (args.length > 0 ? args[args.length - 1] : "");
 
 	if (names) {
+        rxIds.lastIndex = 0;
 		return str.replace(rxIds, function(s) {
 			for (var i = 0, l = names.length; i < l; ++i) {
 				if (s == names[i]) {
@@ -198,6 +199,7 @@ function lambdaReplace(str, v, k) {
 		});
 	}
 	else {
+        rxIds.lastIndex = 0;
 		return str.replace(rxIds, function(s) {
 			var ch = s.charAt(0);
 			if (ch == "$") {
