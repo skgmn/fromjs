@@ -204,7 +204,7 @@ function lambdaReplace(str, v, k) {
 			var ch = s.charAt(0);
 			if (ch == "$") {
 				var l = s.length;
-				if (l >= 2 && s[1] == "$") {
+				if (l >= 2 && s.charAt(1) == "$") {
 					return expandAbbreviated(s, 2, k);
 				} else /*if (l == 1 || !(s in global))*/ {
 					return expandAbbreviated(s, 1, v);
