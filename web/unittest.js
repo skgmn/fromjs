@@ -510,13 +510,13 @@ test('groupJoin() test', function () {
         );
         
     ok(query.count() == 3 &&
-        query.all('@indexOf($ownerName) >= 0', ['Hedlund, Magnus', 'Adams, Terry', 'Weiss, Charlotte']));
+        query.all('from(@).contains($ownerName)', ['Hedlund, Magnus', 'Adams, Terry', 'Weiss, Charlotte']));
 
     query.each(function(obj) {
         if (obj.ownerName == 'Hedlund, Magnus') {
             ok(obj.pets.singleOrDefault(null) == 'Daisy');
         } else if (obj.ownerName == 'Adams, Terry') {
-            ok(obj.pets.count() == 2 && obj.pets.all('@indexOf($) >= 0', ['Barley', 'Boots']));
+            ok(obj.pets.count() == 2 && obj.pets.all('from(@).contains($)', ['Barley', 'Boots']));
         } else if (obj.ownerName == 'Weiss, Charlotte') {
             ok(obj.pets.singleOrDefault(null) == 'Whiskers');
         }
