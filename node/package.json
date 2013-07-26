@@ -1,7 +1,7 @@
 {
     "name": "fromjs",
     "description": "Powerful LINQ engine for JavaScript",
-    "version": "2.1.5-8",
+    "version": "2.1.6",
     "author": {
         "name": "suckgamoni",
         "email": "suckgamony@gmail.com"
