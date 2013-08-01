@@ -1,5 +1,5 @@
 /**
- * from.js v2.1.6
+ * from.js v2.1.6.1
  *
  * Copyright 2012-2013 suckgamony@gmail.com
  * 
@@ -936,6 +936,10 @@ Iterable.prototype.groupJoin = function(inner, outerKeySelector, innerKeySelecto
 	return this.select(rs, {rs: resultSelector, i: inner, a: arg, c: comparer});
 };
 
+Iterable.prototype.indexOf = function(pred, arg) {
+    return this.where(pred, arg).select('$$').firstOrDefault(-1);
+};
+
 Iterable.prototype.intersect = function(second, comparer, arg) {
 	var compStr;
 	if (!comparer) {
@@ -1220,7 +1224,7 @@ Iterable.prototype.selectMany = function(selector, arg) {
 			procStr = "@p($,@i++,@a0)";
 		}
 		
-		this.broken = self.each("from(" + s + ").each(" + quote(procStr) + ",@)", {s: selector, a: arg, a0: arg0, i: 0, p: proc});
+		this.broken = self.each("from(" + s + ").each(" + quote(procStr) + ",@)", {s: selector, a: arg, a0: arg0, i: 0, p: proc}).broken;
 		return this;
 	}
 
@@ -1864,9 +1868,8 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
             if (codes.length > 0) {
                 codes.push('r.start=s;r.end=e;');
-
-                var f = new Function('d', 'r', 'q', 's', 'e', codes.join(''));
-                f(data, region, queries, start, end);
+                var f = new Function(alias, 'd', 'r', 'q', 's', 'e', codes.join(''));
+                f(from, data, region, queries, start, end);
             } else {
                 region.start = start;
                 region.end = end;
