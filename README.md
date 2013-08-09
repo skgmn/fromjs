@@ -2,7 +2,7 @@
 from.js is a super fast, extremely-optimized LINQ engine for JavaScript.
 
 ## Features
-* **High-performance**
+* **High-performance** ([Show benchmark result](https://github.com/suckgamoni/fromjs/blob/work/web/benchmark/result.png))
 * Supports most LINQ functions that .NET provides
 * 100% lazy evaluation
 * Supports lambda expression
