@@ -1098,11 +1098,11 @@ Iterable.prototype.min = function(selector, arg) {
 };
 
 Iterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, 1, arg);
+	return new OrderedIterable(this).addCriteria(keySelector || "$", comparer, 1, arg);
 };
 
 Iterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this)._addContext(keySelector || "$", comparer, -1, arg);
+	return new OrderedIterable(this).addCriteria(keySelector || "$", comparer, -1, arg);
 };
 
 Iterable.prototype.reverse = function() {
@@ -2046,11 +2046,11 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 };
 
 RandomAccessIterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this)._addContext(keySelector || "$", comparer, 1, arg);
+	return new OrderedRandomAccessIterable(this).addCriteria(keySelector || "$", comparer, 1, arg);
 };
 
 RandomAccessIterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this)._addContext(keySelector || "$", comparer, -1, arg);
+	return new OrderedRandomAccessIterable(this).addCriteria(keySelector || "$", comparer, -1, arg);
 };
 
 RandomAccessIterable.prototype.reverse = function () {
@@ -2403,22 +2403,22 @@ extend(ObjectIterable, OrderedIterable);
 
 OrderedIterable.prototype.clone = function () {
     var o = new this.constructor(this.it);
-    var ctx = this.context;
+    var crt = this.criteria;
 
-    if (ctx) {
-        o.context = from(ctx).toArray();
+    if (crt) {
+        o.criteria = crt.slice();
     }
 
     return o;
 };
 
-OrderedIterable.prototype._addContext = function(keySelector, comparer, asc, arg) {
-    var ctx = this.context;
-    if (!ctx) {
-        this.context = ctx = [];
+OrderedIterable.prototype.addCriteria = function(keySelector, comparer, asc, arg) {
+    var crt = this.criteria;
+    if (!crt) {
+        this.criteria = crt = [];
     }
 
-	ctx.push({
+	crt.push({
 		keySelector: lambdaParse(keySelector, 3),
 		comparer: lambdaParse(comparer, 3),
 		asc: asc,
@@ -2434,22 +2434,22 @@ OrderedIterable.prototype.each = function(proc, arg) {
 
 	var indices = from.range(row.length / 2).toArray();
 
-	var contexts = this.context;
+	var crts = this.criteria;
 
 	function f(a, b) {
-        if (contexts) {
-            for (var i = 0, l = contexts.length; i < l; ++i) {
-                var ctx = contexts[i];
+        if (crts) {
+            for (var i = 0, l = crts.length; i < l; ++i) {
+                var crt = crts[i];
 
-                var aSelected = ctx.keySelector(row[a * 2 + 1], row[a * 2], ctx.arg);
-                var bSelected = ctx.keySelector(row[b * 2 + 1], row[b * 2], ctx.arg);
+                var aSelected = crt.keySelector(row[a * 2 + 1], row[a * 2], crt.arg);
+                var bSelected = crt.keySelector(row[b * 2 + 1], row[b * 2], crt.arg);
 
                 var compared;
-                if (!ctx.comparer) {
-                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -ctx.asc : ctx.asc));
+                if (!crt.comparer) {
+                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -crt.asc : crt.asc));
                 }
                 else {
-                    compared = ctx.asc * ctx.comparer(aSelected, bSelected, ctx.arg);
+                    compared = crt.asc * crt.comparer(aSelected, bSelected, crt.arg);
                 }
 
                 if (compared != 0) return compared;
@@ -2499,11 +2499,11 @@ OrderedIterable.prototype.each = function(proc, arg) {
 };
 
 OrderedIterable.prototype.thenBy = function(keySelector, comparer, arg) {
-	return this.clone()._addContext(keySelector, comparer, 1, arg);
+	return this.clone().addCriteria(keySelector, comparer, 1, arg);
 };
 
 OrderedIterable.prototype.thenByDesc = function(keySelector, comparer, arg) {
-	return this.clone()._addContext(keySelector, comparer, -1, arg);
+	return this.clone().addCriteria(keySelector, comparer, -1, arg);
 };
 
 //
@@ -2519,22 +2519,22 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
     var indices = this.it.select('$$').toArray();
     
     var data = this.it.data;
-	var contexts = this.context;
+	var crts = this.criteria;
 
 	function f(a, b) {
-        if (contexts) {
-            for (var i = 0, l = contexts.length; i < l; ++i) {
-                var ctx = contexts[i];
+        if (crts) {
+            for (var i = 0, l = crts.length; i < l; ++i) {
+                var crt = crts[i];
 
-                var aSelected = ctx.keySelector(data[a], a, ctx.arg);
-                var bSelected = ctx.keySelector(data[b], b, ctx.arg);
+                var aSelected = crt.keySelector(data[a], a, crt.arg);
+                var bSelected = crt.keySelector(data[b], b, crt.arg);
 
                 var compared;
-                if (!ctx.comparer) {
-                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -ctx.asc : ctx.asc));
+                if (!crt.comparer) {
+                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -crt.asc : crt.asc));
                 }
                 else {
-                    compared = ctx.asc * ctx.comparer(aSelected, bSelected, ctx.arg);
+                    compared = crt.asc * crt.comparer(aSelected, bSelected, crt.arg);
                 }
 
                 if (compared != 0) return compared;
