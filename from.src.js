@@ -83,6 +83,7 @@ function expandAbbreviated(s, prefixLen, to) {
 var rxLambdaWithOneArg = /^\s*(\w+)\s*=>(.+)$/;
 var rxLambdaWithManyArgs = /^\s*\(\s*([\w\s,]*)\s*\)\s*=>(.+)$/;
 var rxIds = /"(?:[^"]|\\")*"|'(?:[^']|\\')*'|[\$@\w_#]+/g;
+var rxFunctionArgList = /^\s*function(?:\s+[^(\s]+)?\s*\(\s*([^)]*)\s*\)/;
 
 function lambdaGetUseCount(str, argCount, splited) {
 	var hint;
@@ -291,6 +292,10 @@ function lambdaParse(str, argCount) {
 		names.push("return " + str + ";");
 		return Function.apply(null, names);
 	}
+}
+
+function getFunctionArgumentCount(f) {
+    return rxFunctionArgList.exec(f)[1].split(',').length;
 }
 
 function quote(s) {
@@ -1098,11 +1103,11 @@ Iterable.prototype.min = function(selector, arg) {
 };
 
 Iterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this).addCriteria(keySelector || "$", comparer, 1, arg);
+	return new OrderedIterable(this).addCriteria(keySelector, comparer, 1, arg);
 };
 
 Iterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedIterable(this).addCriteria(keySelector || "$", comparer, -1, arg);
+	return new OrderedIterable(this).addCriteria(keySelector, comparer, -1, arg);
 };
 
 Iterable.prototype.reverse = function() {
@@ -2046,11 +2051,11 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 };
 
 RandomAccessIterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this).addCriteria(keySelector || "$", comparer, 1, arg);
+	return new OrderedRandomAccessIterable(this).addCriteria(keySelector, comparer, 1, arg);
 };
 
 RandomAccessIterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this).addCriteria(keySelector || "$", comparer, -1, arg);
+	return new OrderedRandomAccessIterable(this).addCriteria(keySelector, comparer, -1, arg);
 };
 
 RandomAccessIterable.prototype.reverse = function () {
@@ -2398,6 +2403,7 @@ ObjectReversedIterable.prototype.reverse = function() {
 
 function OrderedIterable(it) {
 	this.it = it;
+    this.keyRequired = false;
 }
 extend(ObjectIterable, OrderedIterable);
 
@@ -2419,30 +2425,131 @@ OrderedIterable.prototype.addCriteria = function(keySelector, comparer, asc, arg
     }
 
 	crt.push({
-		keySelector: lambdaParse(keySelector, 3),
+		keySelector: lambdaParse(keySelector || '$', 3),
 		comparer: lambdaParse(comparer, 3),
 		asc: asc,
 		arg: arg
 	});
 
+    if (keySelector && !this.keyRequired) {
+        if (typeof keySelector == 'string') {
+            var uses = lambdaGetUseCount(keySelector, 3);
+            this.keyRequired = (uses[1] > 0);
+        } else {
+            this.keyRequired = (getFunctionArgumentCount(keySelector) > 1);
+        }
+    }
+
+    if (comparer && !this.keyRequired) {
+        if (typeof comparer == 'string') {
+            var uses = lambdaGetUseCount(comparer, 3);
+            this.keyRequired = (uses[1] > 0);
+        } else {
+            this.keyRequired = (getFunctionArgumentCount(comparer) > 1);
+        }
+    }
+
     return this;
 }
 
 OrderedIterable.prototype.each = function(proc, arg) {
-	var row = [];
-	this.it.each("@push($$),@push($),0", row);
+    var uses, splited;
+    var keyRequired = this.keyRequired;
+    if (!keyRequired) {
+        if (typeof proc == 'string') {
+            splited = [];
+            uses = lambdaGetUseCount(proc, 3, splited);
+            keyRequired = (uses[1] > 0);
+        } else {
+            keyRequired = (getFunctionArgumentCount(proc) > 1);
+        }
+    }
 
-	var indices = from.range(row.length / 2).toArray();
+    if (keyRequired) {
+        var row = [];
+        this.it.each("@push($$),@push($),0", row);
 
-	var crts = this.criteria;
+        var indices = from.range(row.length / 2).toArray();
+        var crts = this.criteria;
 
-	function f(a, b) {
+        function sortfunction(a, b) {
+            if (crts) {
+                for (var i = 0, l = crts.length; i < l; ++i) {
+                    var crt = crts[i];
+
+                    var aSelected = crt.keySelector(row[a * 2 + 1], row[a * 2], crt.arg);
+                    var bSelected = crt.keySelector(row[b * 2 + 1], row[b * 2], crt.arg);
+
+                    var compared;
+                    if (!crt.comparer) {
+                        compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -crt.asc : crt.asc));
+                    } else {
+                        compared = crt.asc * crt.comparer(aSelected, bSelected, crt.arg);
+                    }
+
+                    if (compared != 0) return compared;
+                }
+            }
+
+            return (a == b ? 0 : (a < b ? -1 : 1));
+        }
+
+        indices.sort(sortfunction);
+
+        if (typeof(proc) == "string") {
+            var f = cache.get("each_ordered_with_key", proc);
+            if (!f) {
+                if (!uses) {
+                    splited = [];
+                    uses = lambdaGetUseCount(proc, 3, splited);
+                }
+
+                var defV, defK, v, k;
+
+                switch (uses[0]) {
+                case 0: case 1: defV = ""; v = "r[n+1]"; break;
+                default: defV = "var v=r[n+1];"; v = "v"; break;
+                }
+
+                switch (uses[1]) {
+                case 0: case 1: defK = ""; k = "r[n]"; break;
+                default: defK = "var k=r[n];"; k = "k"; break;
+                }
+
+                f = new Function(alias, "l", "r", "a",
+                    "for(var i=0,c=l.length;i<c;++i){var n=l[i]*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
+                cache.set("each_ordered_with_key", proc, f);
+            }
+            this.broken = f(from, indices, row, arg);
+        }
+        else {
+            this.broken = false;
+            for (var i = 0, l = indices.length; i < l; ++i) {
+                var index = indices[i] * 2;
+                if (proc(row[index + 1], row[index], arg) === false) {
+                    this.broken = true;
+                    break;
+                }
+            }
+        }
+    } else {
+        this.iterateSortedWithoutKey(uses, splited, proc, arg);
+    }
+
+	return this;
+};
+
+OrderedIterable.prototype.iterateSortedWithoutKey = function(uses, splited, proc, arg) {
+    var row = this.it.toArray();
+    var crts = this.criteria;
+
+    function sortfunction(a, b) {
         if (crts) {
             for (var i = 0, l = crts.length; i < l; ++i) {
                 var crt = crts[i];
 
-                var aSelected = crt.keySelector(row[a * 2 + 1], row[a * 2], crt.arg);
-                var bSelected = crt.keySelector(row[b * 2 + 1], row[b * 2], crt.arg);
+                var aSelected = crt.keySelector(a);
+                var bSelected = crt.keySelector(b);
 
                 var compared;
                 if (!crt.comparer) {
@@ -2456,46 +2563,41 @@ OrderedIterable.prototype.each = function(proc, arg) {
             }
         }
 
-		return (a == b ? 0 : (a < b ? -1 : 1));
-	}
+        return (a == b ? 0 : (a < b ? -1 : 1));
+    }
 
-	indices.sort(f);
+    row.sort(sortfunction);
 
-	if (typeof(proc) == "string") {
-		var f = cache.get("each_ord", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetUseCount(proc, 3, splited);
-			var defV, defK, v, k;
+    if (typeof(proc) == "string") {
+        var f = cache.get("each_ordered_without_key", proc);
+        if (!f) {
+            if (!uses) {
+                splited = [];
+                uses = lambdaGetUseCount(proc, 3, splited);
+            }
 
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "r[n+1]"; break;
-			default: defV = "var v=r[n+1];"; v = "v"; break;
-			}
+            var defV, v;
 
-			switch (hint[1]) {
-			case 0: case 1: defK = ""; k = "r[n]"; break;
-			default: defK = "var k=r[n];"; k = "k"; break;
-			}
+            switch (uses[0]) {
+            case 0: case 1: defV = ""; v = "r[i]"; break;
+            default: defV = "var v=r[i];"; v = "v"; break;
+            }
 
-			f = new Function(alias, "l", "r", "a",
-			    "for(var i=0,c=l.length;i<c;++i){var n=l[i]*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
-			cache.set("each_ord", proc, f);
-		}
-		this.broken = f(from, indices, row, arg);
-	}
-	else {
-		this.broken = false;
-		for (var i = 0, l = indices.length; i < l; ++i) {
-			var index = indices[i] * 2;
-			if (proc(row[index + 1], row[index], arg) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
-
-	return this;
+            f = new Function(alias, "r", 'a',
+                "for(var i=0,c=r.length;i<c;++i){" + defV + "if((" + lambdaJoin(splited, v, 'null', 'a') + ")===false)return true;}return false;");
+            cache.set("each_ordered_without_key", proc, f);
+        }
+        this.broken = f(from, row, arg);
+    }
+    else {
+        this.broken = false;
+        for (var i = 0, l = row.length; i < l; ++i) {
+            if (proc(row[i], null, arg) === false) {
+                this.broken = true;
+                break;
+            }
+        }
+    }
 };
 
 OrderedIterable.prototype.thenBy = function(keySelector, comparer, arg) {
@@ -2511,74 +2613,94 @@ OrderedIterable.prototype.thenByDesc = function(keySelector, comparer, arg) {
 //
 
 function OrderedRandomAccessIterable(it) {
-    this.it = it;
+    OrderedIterable.call(this, it);
 }
 extend(OrderedIterable, OrderedRandomAccessIterable);
 
 OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
-    var indices = this.it.select('$$').toArray();
-    
-    var data = this.it.data;
+    var uses, splited;
+    var keyRequired = this.keyRequired;
+    if (!keyRequired) {
+        if (typeof proc == 'string') {
+            splited = [];
+            uses = lambdaGetUseCount(proc, 3, splited);
+            keyRequired = (uses[1] > 0);
+        } else {
+            keyRequired = (getFunctionArgumentCount(proc) > 1);
+        }
+    }
+
+    var it = this.it;
+    var data = it.data;
 	var crts = this.criteria;
 
-	function f(a, b) {
-        if (crts) {
-            for (var i = 0, l = crts.length; i < l; ++i) {
-                var crt = crts[i];
+    if (keyRequired) {
+        var indices = this.it.select('$$').toArray();
 
-                var aSelected = crt.keySelector(data[a], a, crt.arg);
-                var bSelected = crt.keySelector(data[b], b, crt.arg);
+        function sortfunction(a, b) {
+            if (crts) {
+                for (var i = 0, l = crts.length; i < l; ++i) {
+                    var crt = crts[i];
 
-                var compared;
-                if (!crt.comparer) {
-                    compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -crt.asc : crt.asc));
+                    var aSelected = crt.keySelector(it.getItem(data, a), a, crt.arg);
+                    var bSelected = crt.keySelector(it.getItem(data, b), b, crt.arg);
+
+                    var compared;
+                    if (!crt.comparer) {
+                        compared = (aSelected == bSelected ? 0 : (aSelected < bSelected ? -crt.asc : crt.asc));
+                    }
+                    else {
+                        compared = crt.asc * crt.comparer(aSelected, bSelected, crt.arg);
+                    }
+
+                    if (compared != 0) return compared;
                 }
-                else {
-                    compared = crt.asc * crt.comparer(aSelected, bSelected, crt.arg);
-                }
-
-                if (compared != 0) return compared;
             }
+
+            return (a == b ? 0 : (a < b ? -1 : 1));
         }
 
-		return (a == b ? 0 : (a < b ? -1 : 1));
-	}
+        indices.sort(sortfunction);
 
-	indices.sort(f);
+        if (typeof(proc) == "string") {
+            var f = cache.get("each_ordered_random_access_with_key", proc);
+            if (!f) {
+                if (!uses) {
+                    splited = [];
+                    uses = lambdaGetUseCount(proc, 3, splited);
+                }
 
-	if (typeof(proc) == "string") {
-		var f = cache.get("each_ordered_random_access", proc);
-		if (!f) {
-		    var splited = [];
-			var hint = lambdaGetUseCount(proc, 3, splited);
-			var defV, defK, v, k;
+                var defV, defK, v, k;
 
-			switch (hint[1]) {
-			case 0: defK = ""; k = "l[i]"; break;
-			default: defK = "var k=l[i];"; k = "k"; break;
-			}
+                switch (uses[1]) {
+                case 0: defK = ""; k = "l[i]"; break;
+                default: defK = "var k=l[i];"; k = "k"; break;
+                }
 
-			switch (hint[0]) {
-			case 0: case 1: defV = ""; v = "r[" + k + "]"; break;
-			default: defV = "var v=r[" + k + "];"; v = "v"; break;
-			}
+                switch (uses[0]) {
+                case 0: case 1: defV = ""; v = it.lambdaGetItem('r', k); break;
+                default: defV = "var v=" + it.lambdaGetItem('r', k) + ";"; v = "v"; break;
+                }
 
-			f = new Function(alias, "l", "r", "a",
-			    "for(var i=0,c=l.length;i<c;++i){" + defK + defV + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
-			cache.set("each_ordered_random_access", proc, f);
-		}
-		this.broken = f(from, indices, data, arg);
-	}
-	else {
-		this.broken = false;
-		for (var i = 0, l = indices.length; i < l; ++i) {
-			var index = indices[i];
-			if (proc(data[index], index, arg) === false) {
-				this.broken = true;
-				break;
-			}
-		}
-	}
+                f = new Function(alias, "l", "r", "a",
+                    "for(var i=0,c=l.length;i<c;++i){" + defK + defV + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
+                cache.set("each_ordered_random_access_with_key", proc, f);
+            }
+            this.broken = f(from, indices, data, arg);
+        }
+        else {
+            this.broken = false;
+            for (var i = 0, l = indices.length; i < l; ++i) {
+                var index = indices[i];
+                if (proc(it.getItem(data, index), index, arg) === false) {
+                    this.broken = true;
+                    break;
+                }
+            }
+        }
+    } else {
+        this.iterateSortedWithoutKey(uses, splited, proc, arg);
+    }
 
 	return this;
 };
