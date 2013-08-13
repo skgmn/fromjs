@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="from.js : The fastest LINQ engine for JavaScript" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>from.js</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/suckgamoni/fromjs">View on GitHub</a>
+
+          <h1 id="project_title">from.js</h1>
+          <h2 id="project_tagline">The fastest LINQ engine for JavaScript</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/suckgamoni/fromjs/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/suckgamoni/fromjs/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a name="fromjs" class="anchor" href="#fromjs"><span class="octicon octicon-link"></span></a>from.js</h1>
+
+<p>from.js is a super fast, extremely-optimized LINQ engine for JavaScript.</p>
+
+<h2>
+<a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li>
+<strong>High-performance</strong> (<a href="https://github.com/suckgamoni/fromjs/blob/work/web/benchmark/result.png">See the benchmark result</a>)</li>
+<li>Supports most LINQ functions that .NET provides</li>
+<li>100% lazy evaluation</li>
+<li>Supports lambda expression</li>
+</ul><h2>
+<a name="supported-platforms" class="anchor" href="#supported-platforms"><span class="octicon octicon-link"></span></a>Supported platforms</h2>
+
+<ul>
+<li>Web</li>
+<li>node.js</li>
+</ul><h2>
+<a name="this-is-intended-to" class="anchor" href="#this-is-intended-to"><span class="octicon octicon-link"></span></a>This is intended to</h2>
+
+<ul>
+<li>make it easy to use LINQ in JavaScript for whom is familiar with .NET environment.</li>
+<li>provide LINQ features to JavaScript developers without worrying about performance.</li>
+</ul><h2>
+<a name="importing-module" class="anchor" href="#importing-module"><span class="octicon octicon-link"></span></a>Importing module</h2>
+
+<p><strong>Web</strong></p>
+
+<div class="highlight"><pre><span class="nt">&lt;script </span><span class="na">src=</span><span class="s">'from.js'</span><span class="nt">&gt;&lt;/script&gt;</span>
+</pre></div>
+
+<p><strong>node.js</strong> (It can be installed by using <em>npm install fromjs</em>)</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">from</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'fromjs'</span><span class="p">);</span>
+</pre></div>
+
+<h2>
+<a name="basic-iteration" class="anchor" href="#basic-iteration"><span class="octicon octicon-link"></span></a>Basic iteration</h2>
+
+<p>You can basically iterate Array, String, Object by using each(). </p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">];</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">array</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'Value '</span> <span class="o">+</span> <span class="nx">value</span> <span class="o">+</span> <span class="s1">' at index '</span> <span class="o">+</span> <span class="nx">key</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="c1">// Value 1 at index 0</span>
+<span class="c1">// Value 2 at index 1</span>
+<span class="c1">// Value 3 at index 2</span>
+<span class="c1">// Value 4 at index 3</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">o</span> <span class="o">=</span> <span class="p">{</span><span class="nx">foo</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">bar</span><span class="o">:</span> <span class="mi">2</span><span class="p">};</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">o</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">key</span> <span class="o">+</span> <span class="s1">' = '</span> <span class="o">+</span> <span class="nx">value</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="c1">// foo = 1</span>
+<span class="c1">// bar = 2</span>
+</pre></div>
+
+<p>An iteration can be stopped by returning false.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">];</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">array</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'Value '</span> <span class="o">+</span> <span class="nx">value</span> <span class="o">+</span> <span class="s1">' at index '</span> <span class="o">+</span> <span class="nx">key</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">value</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">});</span>
+
+<span class="c1">// Value 1 at index 0</span>
+<span class="c1">// Value 2 at index 1</span>
+</pre></div>
+
+<p><em>broken</em> parameter can be used to investigate either the iteration was broken.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">];</span>
+<span class="kd">var</span> <span class="nx">broken</span> <span class="o">=</span> <span class="nx">from</span><span class="p">(</span><span class="nx">array</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">value</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="p">}).</span><span class="nx">broken</span><span class="p">;</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">broken</span><span class="p">);</span> <span class="c1">// true</span>
+</pre></div>
+
+<h2>
+<a name="basic-query" class="anchor" href="#basic-query"><span class="octicon octicon-link"></span></a>Basic query</h2>
+
+<p><strong>Printing numbers less than 5 in an array</strong></p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">where</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="p">})</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+    <span class="p">});</span>
+</pre></div>
+
+<p><strong>Printing each number + 1 in an array</strong></p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">})</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+    <span class="p">});</span>
+</pre></div>
+
+<p><strong>Printing the average of top 3 grades</strong></p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">grades</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">82</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">92</span><span class="p">,</span> <span class="mi">98</span><span class="p">,</span> <span class="mi">85</span> <span class="p">];</span>
+
+<span class="kd">var</span> <span class="nx">average</span> <span class="o">=</span> <span class="nx">from</span><span class="p">(</span><span class="nx">grades</span><span class="p">)</span>
+                <span class="p">.</span><span class="nx">orderByDesc</span><span class="p">()</span>
+                <span class="p">.</span><span class="nx">take</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+                <span class="p">.</span><span class="nx">average</span><span class="p">();</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">average</span><span class="p">);</span>
+</pre></div>
+
+<h2>
+<a name="lambda-expression" class="anchor" href="#lambda-expression"><span class="octicon octicon-link"></span></a>Lambda expression</h2>
+
+<p>It will be so tiring work to write every nested function every time. It can be evaded by using lambda expression.
+Its format is almost same as C#'s.</p>
+
+<p>Here's an example.</p>
+
+<div class="highlight"><pre><span class="kd">function</span> <span class="p">(</span><span class="nx">arg1</span><span class="p">,</span> <span class="nx">arg2</span><span class="p">,</span> <span class="nx">arg3</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">arg1</span> <span class="o">*</span> <span class="nx">arg2</span> <span class="o">+</span> <span class="nx">arg3</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+<p>The function given above can be re-written as below using lambda expression.</p>
+
+<pre><code>(arg1, arg2, arg3) =&gt; arg1 * arg2 + arg3
+</code></pre>
+
+<p>Parentheses can be omitted when it has only one argument.</p>
+
+<pre><code>arg1 =&gt; arg1 * 3
+</code></pre>
+
+<p>Now let's apply it into real JavaScript code.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">where</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="p">})</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+    <span class="p">});</span>
+</pre></div>
+
+<p>The example above can be re-written as below.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">where</span><span class="p">(</span><span class="s1">'value =&gt; value &lt; 5'</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="s1">'value =&gt; console.log(value)'</span><span class="p">);</span>
+</pre></div>
+
+<h2>
+<a name="omitting-argument-list" class="anchor" href="#omitting-argument-list"><span class="octicon octicon-link"></span></a>Omitting argument list</h2>
+
+<p>Lambda expression can be shorten more by omitting argument list.
+But how can it be used without any argument specified?
+from.js provides several abbreviations which can be used in this case.</p>
+
+<table>
+<thead><tr>
+<th>Abbreviation</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>#n</td>
+<td>The <em>n</em>-th argument (zero based)</td>
+</tr>
+<tr>
+<td>$</td>
+<td>The first argument (same as #0)</td>
+</tr>
+<tr>
+<td>$$</td>
+<td>The second argument (same as #1)</td>
+</tr>
+<tr>
+<td>@</td>
+<td>The last argument</td>
+</tr>
+</tbody>
+</table><p>For example,</p>
+
+<pre><code>(arg0, arg1, arg2, arg3) =&gt; arg0 * arg1 + arg2 * arg3
+</code></pre>
+
+<p>the expression above can be shorten as below.</p>
+
+<pre><code>#0 * #1 + #2 * #3
+</code></pre>
+
+<p>or</p>
+
+<pre><code>$ * $$ + #2 * @
+</code></pre>
+
+<p>Let's apply it into JavaScript code.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">where</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">value</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">;</span>
+    <span class="p">})</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">value</span><span class="p">);</span>
+    <span class="p">});</span>
+</pre></div>
+
+<p>The sample above can be shorten as below.</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">).</span><span class="nx">where</span><span class="p">(</span><span class="s1">'$ &lt; 5'</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="s1">'console.log($)'</span><span class="p">);</span>
+</pre></div>
+
+<p>As you will see, most predicator functions have similar arguments list (except comparers).
+In most cases, the first argument means 'value', the second means 'key', and the last means 'external argument'.
+(This is the most different part from .NET)
+You can habitually consider $ as a value, $$ as a key, and @ as an external argument.</p>
+
+<h2>
+<a name="external-argument" class="anchor" href="#external-argument"><span class="octicon octicon-link"></span></a>External argument</h2>
+
+<p>Because lambda expressions are given as String, any variables in the current context can't be referenced. For example,</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+<span class="kd">var</span> <span class="nx">n</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">).</span><span class="nx">where</span><span class="p">(</span><span class="s1">'value =&gt; value &lt; n'</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="s1">'value =&gt; console.log(value)'</span><span class="p">);</span>
+</pre></div>
+
+<p>this code won't work. Then how can it be get around?
+Most predicator functions provided by from.js support external argument.
+If an object is given as an external argument, it can be referenced in lambda expression.</p>
+
+<p>The example above should be like this:</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">numbers</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span> <span class="p">];</span> 
+<span class="kd">var</span> <span class="nx">n</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">).</span><span class="nx">where</span><span class="p">(</span><span class="s1">'(value, key, arg) =&gt; value &lt; arg'</span><span class="p">,</span> <span class="nx">n</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="s1">'value =&gt; console.log(value)'</span><span class="p">);</span>
+<span class="c1">// or simply</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">numbers</span><span class="p">).</span><span class="nx">where</span><span class="p">(</span><span class="s1">'$ &lt; @'</span><span class="p">,</span> <span class="nx">n</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="s1">'console.log($)'</span><span class="p">);</span>
+</pre></div>
+
+<h2>
+<a name="some-more-conveniences-on-lambda-expression" class="anchor" href="#some-more-conveniences-on-lambda-expression"><span class="octicon octicon-link"></span></a>Some more conveniences on lambda expression</h2>
+
+<p>There are still more chances to shorten lambda expressions.</p>
+
+<ul>
+<li>'Dot' can be omitted between $,$$,@ and following keyword. For instance, <em>$length</em> will be processed identically as <em>$.length</em>.</li>
+</ul><div class="highlight"><pre><span class="c1">// Print fruit names ordered by its length</span>
+<span class="kd">var</span> <span class="nx">fruits</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">"apple"</span><span class="p">,</span> <span class="s2">"passionfruit"</span><span class="p">,</span> <span class="s2">"banana"</span><span class="p">,</span> <span class="s2">"mango"</span><span class="p">,</span>
+    <span class="s2">"orange"</span><span class="p">,</span> <span class="s2">"blueberry"</span><span class="p">,</span> <span class="s2">"grape"</span><span class="p">,</span> <span class="s2">"strawberry"</span> <span class="p">];</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">fruits</span><span class="p">).</span><span class="nx">orderBy</span><span class="p">(</span><span class="s1">'$length'</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span><span class="s1">'console.log($)'</span><span class="p">);</span>
+</pre></div>
+
+<ul>
+<li>Referencing array of $,$$,@ can be shorten like this: @[3] --&gt; <a href="https://github.com/3" class="user-mention">@3</a>
+</li>
+</ul><div class="highlight"><pre><span class="kd">var</span> <span class="nx">fruits</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">"apple"</span><span class="p">,</span> <span class="s2">"passionfruit"</span><span class="p">,</span> <span class="s2">"banana"</span><span class="p">,</span> <span class="s2">"mango"</span><span class="p">,</span>
+    <span class="s2">"orange"</span><span class="p">,</span> <span class="s2">"blueberry"</span><span class="p">,</span> <span class="s2">"grape"</span><span class="p">,</span> <span class="s2">"strawberry"</span> <span class="p">];</span>
+<span class="kd">var</span> <span class="nx">appleOrBanana</span> <span class="o">=</span> <span class="nx">from</span><span class="p">(</span><span class="nx">fruits</span><span class="p">).</span><span class="nx">count</span><span class="p">(</span><span class="s1">'$ == @0 || $ == @1'</span><span class="p">,</span> <span class="p">[</span><span class="s1">'apple'</span><span class="p">,</span> <span class="s1">'banana'</span><span class="p">]);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">appleOrBanana</span><span class="p">);</span> <span class="c1">// 2</span>
+</pre></div>
+
+<h2>
+<a name="empty-iterable" class="anchor" href="#empty-iterable"><span class="octicon octicon-link"></span></a>Empty iterable</h2>
+
+<p>Sometimes it is needed to use an empty iterable object. In this case, simply call from() without any argument,</p>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">names1</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">"Hartono, Tommy"</span> <span class="p">];</span>
+<span class="kd">var</span> <span class="nx">names2</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">"Adams, Terry"</span><span class="p">,</span> <span class="s2">"Andersen, Henriette Thaulow"</span><span class="p">,</span> <span class="s2">"Hedlund, Magnus"</span><span class="p">,</span> <span class="s2">"Ito, Shu"</span> <span class="p">];</span>
+<span class="kd">var</span> <span class="nx">names3</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">"Solanki, Ajay"</span><span class="p">,</span> <span class="s2">"Hoeing, Helge"</span><span class="p">,</span> <span class="s2">"Andersen, Henriette Thaulow"</span><span class="p">,</span> <span class="s2">"Potra, Cristina"</span><span class="p">,</span> <span class="s2">"Iallo, Lucio"</span> <span class="p">];</span>
+
+<span class="kd">var</span> <span class="nx">namesList</span> <span class="o">=</span> <span class="p">[</span> <span class="nx">names1</span><span class="p">,</span> <span class="nx">names2</span><span class="p">,</span> <span class="nx">names3</span> <span class="p">];</span>
+
+<span class="c1">// Only include arrays that have four or more elements</span>
+<span class="nx">from</span><span class="p">(</span><span class="nx">namesList</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">aggregate</span><span class="p">(</span><span class="nx">from</span><span class="p">(),</span> <span class="s2">"(current, next) =&gt; next.length &gt; 3 ? current.union(next) : current"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="s2">"console.log($)"</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+
+<span class="cm"> Adams, Terry</span>
+<span class="cm"> Andersen, Henriette Thaulow</span>
+<span class="cm"> Hedlund, Magnus</span>
+<span class="cm"> Ito, Shu</span>
+<span class="cm"> Solanki, Ajay</span>
+<span class="cm"> Hoeing, Helge</span>
+<span class="cm"> Potra, Cristina</span>
+<span class="cm"> Iallo, Lucio</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<h2>
+<a name="ranged-iterable" class="anchor" href="#ranged-iterable"><span class="octicon octicon-link"></span></a>Ranged iterable</h2>
+
+<p>It is able to generate a ranged iterable by using from.range().</p>
+
+<div class="highlight"><pre><span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>                <span class="c1">// from 0 to n - 1</span>
+<span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="nx">start</span><span class="p">,</span> <span class="nx">end</span><span class="p">)</span>       <span class="c1">// from start to end - 1</span>
+<span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="nx">start</span><span class="p">,</span> <span class="nx">end</span><span class="p">,</span> <span class="nx">step</span><span class="p">)</span> <span class="c1">// from start to end - 1, increasing by step</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="s2">"$ * $"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="s2">"console.log($)"</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+<span class="cm"> 0</span>
+<span class="cm"> 1</span>
+<span class="cm"> 4</span>
+<span class="cm"> 9</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="c1">// Generate a sequence of three integers starting at 4, </span>
+<span class="c1">// and then select their squares.</span>
+<span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="s2">"$ * $"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="s2">"console.log($)"</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+<span class="cm"> 16</span>
+<span class="cm"> 25</span>
+<span class="cm"> 36</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="s2">"$ * $"</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="s2">"console.log($)"</span><span class="p">);</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+<span class="cm"> 9</span>
+<span class="cm"> 36</span>
+<span class="cm"> 81</span>
+<span class="cm"> 144</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<h2>
+<a name="repeator" class="anchor" href="#repeator"><span class="octicon octicon-link"></span></a>Repeator</h2>
+
+<div class="highlight"><pre><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">from</span><span class="p">.</span><span class="nx">repeat</span><span class="p">(</span><span class="s1">'a'</span><span class="p">,</span> <span class="mi">4</span><span class="p">).</span><span class="nx">toString</span><span class="p">());</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+<span class="cm"> aaaa</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<h2>
+<a name="regular-expression-iteration" class="anchor" href="#regular-expression-iteration"><span class="octicon octicon-link"></span></a>Regular expression iteration</h2>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">myRe</span> <span class="o">=</span> <span class="sr">/ab*/g</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">str</span> <span class="o">=</span> <span class="s2">"abbcdefabh"</span><span class="p">;</span>
+
+<span class="nx">from</span><span class="p">(</span><span class="nx">myRe</span><span class="p">).</span><span class="nx">match</span><span class="p">(</span><span class="nx">str</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">m</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'Found '</span> <span class="o">+</span> <span class="nx">m</span> <span class="o">+</span>
+            <span class="s1">'. Next match starts at '</span> <span class="o">+</span> <span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">index</span> <span class="o">+</span> <span class="nx">m</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span><span class="p">));</span>
+    <span class="p">});</span>
+
+<span class="cm">/*</span>
+<span class="cm"> This code produces the following output:</span>
+
+<span class="cm">  Found abb. Next match starts at 3</span>
+<span class="cm">  Found ab. Next match starts at 9</span>
+<span class="cm">*/</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">str</span> <span class="o">=</span> <span class="s1">'Hello world!'</span><span class="p">;</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">from</span><span class="p">(</span><span class="sr">/Hello/g</span><span class="p">).</span><span class="nx">match</span><span class="p">(</span><span class="nx">str</span><span class="p">).</span><span class="nx">any</span><span class="p">());</span> <span class="c1">// true</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">from</span><span class="p">(</span><span class="sr">/Hello/g</span><span class="p">,</span> <span class="nx">str</span><span class="p">).</span><span class="nx">any</span><span class="p">());</span> <span class="c1">// true</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">from</span><span class="p">(</span><span class="sr">/W3Schools/g</span><span class="p">,</span> <span class="nx">str</span><span class="p">).</span><span class="nx">any</span><span class="p">());</span> <span class="c1">// false</span>
+</pre></div>
+
+<h2>
+<a name="supported-queries" class="anchor" href="#supported-queries"><span class="octicon octicon-link"></span></a>Supported queries</h2>
+
+<ul>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/aggregate(seed,%20func%5B,%20arg%5D%29">aggregate</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/all(predicate%5B,%20arg%5D%29">all</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/any(%5Bpredicate,%20arg%5D%29">any</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/at(index%29">at</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/atOrDefault(index,%20defValue%29">atOrDefault</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/average(%29">average</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/concat(second%29">concat</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/contains(value%5B,%20comparer,%20arg%5D%29">contains</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/count(%5Bpredicate,%20arg%5D%29">count</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/defaultIfEmpty(defValue%29">defaultIfEmpty</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/distinct(%5Bcomparer,%20arg%5D%29">distinct</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/except(second%5B,%20comparer,%20arg%5D%29">except</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/first(%5Bpredicate,%20arg%5D%29">first</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/firstOrDefault(defValue%29%20,%20firstOrDefault(predicate,%20defValue%5B,%20arg%5D%29">firstOrDefault</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/groupBy(selectors%5B,%20comparer,%20arg%5D%29">groupBy</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/groupJoin(inner,%20outerKeySelector,%20innerKeySelector,%20resultSelector%5B,%20comparer,%20arg%5D%29">groupJoin</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/intersect(second%5B,%20comparer,%20arg%5D%29">intersect</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/join(inner,%20outerKeySelector,%20innerKeySelector,%20resultSelector%5B,%20comparer,%20arg%5D%29">join</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/last(%5Bpredicate,%20arg%5D%29">last</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/lastOrDefault(defValue%29%20,%20lastOrDefault(predicate,%20defValue%5B,%20arg%5D%29">lastOrDefault</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/max(%5Bselector,%20arg%5D%29">max</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/min(%5Bselector,%20arg%5D%29">min</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/orderBy(keySelector%5B,%20comparer,%20arg%5D%29">orderBy</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/orderByDesc(keySelector%5B,%20comparer,%20arg%5D%29">orderByDesc</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/reverse(%29">reverse</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/select(selector%5B,%20arg%5D%29">select</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/selectMany(selector%5B,%20arg%5D%29">selectMany</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/selectPair(valueSelector,%20keySelector%5B,%20arg%5D%29">selectPair</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/sequenceEqual(second%5B,%20comparer,%20arg%5D%29">sequenceEqual</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/single(%5Bpredicate,%20arg%5D%29">single</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/singleOrDefault(defValue%29%20,%20singleOrDefault(predicate,%20defValue%5B,%20arg%5D%29">singleOrDefault</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/skip(count%29">skip</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/skipWhile(predicate%5B,%20arg%5D%29">skipWhile</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/sum(%29">sum</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/take(count%29">take</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/takeWhile(predicate%5B,%20arg%5D%29">takeWhile</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/thenBy(keySelector%5B,%20comparer,%20arg%5D%29">thenBy</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/thenByDesc(keySelector%5B,%20comparer,%20arg%5D%29">thenByDesc</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/toArray(%29">toArray</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/toJSON(%29">toJSON</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/toString(%5Bseparator%5D%29">toString</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/toURLEncoded(%29">toURLEncoded</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/trim(%5Bleft,%20right,%20arg%5D%29">trim</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/union(second%5B,%20comparer,%20arg%5D%29">union</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/where(predicate%5B,%20arg%5D%29">where</a></li>
+<li><a href="https://github.com/suckgamoni/fromjs/wiki/zip(second,%20resultSelector%5B,%20arg%5D%29">zip</a></li>
+</ul><h2>
+<a name="some-practical-examples" class="anchor" href="#some-practical-examples"><span class="octicon octicon-link"></span></a>Some practical examples</h2>
+
+<div class="highlight"><pre><span class="c1">// Determine either n is a prime number.</span>
+<span class="kd">function</span> <span class="nx">isPrime</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">n</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">||</span>
+        <span class="p">(</span><span class="nx">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span>
+        <span class="o">!</span><span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="p">.</span><span class="nx">takeWhile</span><span class="p">(</span><span class="s1">'$ * $ &lt;= @'</span><span class="p">,</span> <span class="nx">n</span><span class="p">)</span>
+            <span class="p">.</span><span class="nx">any</span><span class="p">(</span><span class="s1">'@ % $ == 0'</span><span class="p">,</span> <span class="nx">n</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c1">// Get prime numbers bigger than n.</span>
+<span class="c1">// Returns [count] numbers in a array, or a single number if count is zero.</span>
+<span class="kd">function</span> <span class="nx">getPrimeBiggerThan</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span> <span class="nx">count</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">n</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">++</span><span class="nx">n</span><span class="p">;</span>
+
+    <span class="kd">var</span> <span class="nx">query</span> <span class="o">=</span> <span class="nx">from</span><span class="p">.</span><span class="nx">range</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span> <span class="kc">Infinity</span><span class="p">,</span> <span class="mi">2</span><span class="p">).</span><span class="nx">where</span><span class="p">(</span><span class="s1">'@($)'</span><span class="p">,</span> <span class="nx">isPrime</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">count</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">query</span><span class="p">.</span><span class="nx">first</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">query</span><span class="p">.</span><span class="nx">take</span><span class="p">(</span><span class="nx">count</span><span class="p">).</span><span class="nx">toArray</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">getPrimeBiggerThan</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">));</span>
+
+<span class="c1">// [ 11, 13, 17, 19, 23 ]</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="kd">function</span> <span class="nx">splitTrimmed</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">delimiter</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">from</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="nx">delimiter</span><span class="p">))</span>
+                <span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="s1">'from($).trim().toString()'</span><span class="p">)</span>
+                <span class="p">.</span><span class="nx">where</span><span class="p">(</span><span class="s1">'$length &gt; 0'</span><span class="p">)</span>
+                <span class="p">.</span><span class="nx">toArray</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="nx">splitTrimmed</span><span class="p">(</span><span class="s1">'  a |  b  |  c  |  |  d  |  |  '</span><span class="p">,</span> <span class="s1">'|'</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span>
+
+<span class="c1">// [ 'a', 'b', 'c', 'd' ]</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+
+<span class="c1">// Make a shallow copy of a array</span>
+<span class="kd">var</span> <span class="nx">copy</span> <span class="o">=</span> <span class="nx">from</span><span class="p">(</span><span class="nx">array</span><span class="p">).</span><span class="nx">toArray</span><span class="p">();</span>
+
+<span class="nx">array</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">copy</span><span class="p">);</span>
+<span class="c1">// [ 1, 2, 3 ]</span>
+</pre></div>
+
+<h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>This software uses MIT license.</p>
+
+<pre><code>Copyright 2012-2013 suckgamony@gmail.com
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+</code></pre>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">from.js maintained by <a href="https://github.com/suckgamoni">suckgamoni</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
