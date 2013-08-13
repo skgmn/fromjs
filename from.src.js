@@ -1,5 +1,5 @@
 /**
- * from.js v2.1.6.1
+ * from.js v2.1.7
  *
  * Copyright 2012-2013 suckgamony@gmail.com
  * 
