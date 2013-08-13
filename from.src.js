@@ -295,6 +295,7 @@ function lambdaParse(str, argCount) {
 }
 
 function getFunctionArgumentCount(f) {
+    rxFunctionArgList.lastIndex = 0;
     return rxFunctionArgList.exec(f)[1].split(',').length;
 }
 
@@ -553,6 +554,7 @@ function Iterable(it) {
 }
 
 Iterable.prototype.broken = false;
+Iterable.prototype.mutable = false;
 
 Iterable.prototype.where = function(pred, arg0) {
 	var pr;
@@ -1770,7 +1772,6 @@ RandomAccessIterable.prototype.measureRegion = function () {
                 if (type == 'skipLeft') {
                     if (typeof proc == 'number') {
                         start = Math.min(end, start + proc);
-                        //codes.push('s=Math.min(e,s+' + proc + ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
                         var hints = lambdaGetUseCount(proc, 3, splited);
@@ -1788,7 +1789,6 @@ RandomAccessIterable.prototype.measureRegion = function () {
                 } else if (type == 'skipRight') {
                     if (typeof proc == 'number') {
                         end = Math.max(start, end - proc);
-                        //codes.push('e=Math.max(s,e-', proc, ');'); 
                     } else if (typeof proc == 'string') {
                         var splited = [];
                         var hints = lambdaGetUseCount(proc, 3, splited);
@@ -1815,7 +1815,6 @@ RandomAccessIterable.prototype.measureRegion = function () {
                 } else if (type == 'takeLeft') {
                     if (typeof proc == 'number') {
                         end = Math.min(end, start + proc);
-                        //codes.push('e=Math.min(e,s+', proc, ');');
                     } else {
                         if (i == c - 3 && !this.rev) {
                             region.take = proc;
@@ -1839,7 +1838,6 @@ RandomAccessIterable.prototype.measureRegion = function () {
                 } else if (type == 'takeRight') {
                     if (typeof proc == 'number') {
                         start = Math.max(start, end - proc);
-                        //codes.push('s=Math.max(s,e-', proc, ');');
                     } else {
                         if (i == c - 3 && this.rev) {
                             region.take = proc;
@@ -2273,13 +2271,23 @@ ArrayIterable.prototype.toJSON = function(track) {
 };
 
 ArrayIterable.prototype.toArray = function () {
-    if (this.rev) {
-        return RandomAccessIterable.prototype.toArray.call(this);
-    }
-    
-    var r = this.measureRegion();
-    if (!r.take) {
-        return this.data.slice(r.start, r.end);
+    if (this.mutable) {
+        if (this.rev) {
+        } else {
+            var r = this.measureRegion();
+            if (!r.take) {
+                return this.data.slice(r.start, r.end);
+            }
+        }
+    } else {
+        if (this.rev) {
+            return RandomAccessIterable.prototype.toArray.call(this);
+        }
+        
+        var r = this.measureRegion();
+        if (!r.take) {
+            return this.data.slice(r.start, r.end);
+        }
     }
 
     return Iterable.prototype.toArray.call(this);
