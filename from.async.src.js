@@ -25,530 +25,15 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-//
-// Tab size: 4
-//
-
 (function() {
-
-
 
 // Beginning of code
 
-var platform;
+function init(from, platform) {
 
-var platformList = {
-    'nodejs': function () {
-        return typeof module !== 'undefined' && module.exports;
-    },
-    'web': function () {
-        return true;
-    }
-};
-
-for (var key in platformList) {
-    if (platformList[key]()) {
-        platform = key;
-        break;
-    }
-}
-
-var alias = 'from';
-
-var defaultTrimmingTarget = [undefined, null, false, 0, ' ', '\n', '\t'];
-var defaultTrimmingPredicateArray = 'from(@t).contains($)';
-var defaultTrimmingPredicateIterable = '@t.contains($)';
-
-var CACHE_MAX = 16;
-
-function isNumber(str) {
-	return /^[0-9]+$/.exec(str) ? true : false;
-}
-
-function expandAbbreviated(s, prefixLen, to) {
-	if (s.length == prefixLen) {
-		return to;
-	}
-	else {
-		var prop = s.substr(prefixLen);
-		if (isNumber(prop)) {
-			return to + "[" + prop + "]";
-		}
-		else {
-			return to + "." + prop;
-		}
-	}
-}
-
-var rxLambdaWithOneArg = /^\s*(\w+)\s*=>(.+)$/;
-var rxLambdaWithManyArgs = /^\s*\(\s*([\w\s,]*)\s*\)\s*=>(.+)$/;
-var rxIds = /"(?:[^"]|\\")*"|'(?:[^']|\\')*'|[\$@\w_#]+/g;
-var rxFunctionArgList = /^\s*function(?:\s+[^(\s]+)?\s*\(\s*([^)]*)\s*\)/;
-
-function lambdaGetUseCount(str, argCount, splited) {
-	var hint;
-	var names;
-	
-    rxLambdaWithOneArg.lastIndex = 0;
-	var m = rxLambdaWithOneArg.exec(str);
-	if (m) {
-		names = [m[1]];
-		str = m[2];
-		hint = new Array(1);
-	}
-	else if ((rxLambdaWithManyArgs.lastIndex = 0), (m = rxLambdaWithManyArgs.exec(str))) {
-		names = m[1].split(/\s*,\s*/);
-		str = m[2];
-		hint = new Array(names.length);
-	}
-	else {
-		hint = new Array(argCount);
-	}
-
-	for (var i = 0, c = hint.length; i < c; ++i) {
-		hint[i] = 0;
-	}
-	
-	var prevIndex = 0;
-	var prefixToAdd = '';
-	
-	if (names) {
-        rxIds.lastIndex = 0;
-	    while (m = rxIds.exec(str)) {
-			var s = m[0];
-			for (var j = 0, l = names.length; j < l; ++j) {
-				if (s == names[j]) {
-					++hint[j];
-					
-					if (splited) {
-					    splited.push(str.substring(prevIndex, m.index));
-					    splited.push(j);
-					    
-					    prevIndex = m.index + s.length;
-					}
-					
-					break;
-				}
-			}
-	    }
-	}
-	else {
-    	var nextPrefixToAdd = '';
-        rxIds.lastIndex = 0;
-	    while (m = rxIds.exec(str)) {
-			var s = m[0];
-			var ch = s.charAt(0);
-
-			var arg = null;
-			
-			if (ch == "$") {
-                var index = 0;
-                for (var c = s.length - 1; index < c; ++index) {
-                    if (s.charAt(index + 1) != '$') break;
-                }
-
-                ++hint[index];
-                if (splited) {
-                    arg = index;
-                    nextPrefixToAdd = expandAbbreviated(s, index + 1, '');
-                }
-			}
-			else if (ch == "@") {
-                var length = 1;
-                for (var c = s.length; length < c; ++length) {
-                    if (s.charAt(length) != '@') break;
-                }
-                
-                var index = hint.length - length;
-
-                ++hint[index];
-				if (splited) {
-				    arg = index;
-				    nextPrefixToAdd = expandAbbreviated(s, length, '');
-				}
-			}
-			else if (ch == "#") {
-				var index = parseInt(s.substr(1));
-				++hint[index];
-				
-				if (splited) {
-				    arg = index;
-				    nextPrefixToAdd = '';
-				}
-			}
-			
-			if (splited && arg !== null) {
-			    splited.push(prefixToAdd + str.substring(prevIndex, m.index));
-			    splited.push(arg);
-			    
-			    prevIndex = m.index + s.length;
-			    prefixToAdd = nextPrefixToAdd;
-			    nextPrefixToAdd = '';
-			}
-		}
-	}
-
-    if (splited) {
-        splited.push(prefixToAdd + str.substring(prevIndex, str.length));
-    }
-
-	return hint;
-}
-
-function lambdaReplace(str, v, k) {
-	var names;
-	
-    rxLambdaWithOneArg.lastIndex = 0;
-	var m = rxLambdaWithOneArg.exec(str);
-	if (m) {
-		names = [m[1]];
-		str = m[2];
-	}
-	else if ((rxLambdaWithManyArgs.lastIndex = 0), (m = rxLambdaWithManyArgs.exec(str))) {
-		names = m[1].split(/\s*,\s*/);
-		str = m[2];
-	}
-
-	var args = arguments;
-	var a = (args.length > 0 ? args[args.length - 1] : "");
-
-	if (names) {
-        rxIds.lastIndex = 0;
-		return str.replace(rxIds, function(s) {
-			for (var i = 0, l = names.length; i < l; ++i) {
-				if (s == names[i]) {
-					return args[i + 1];
-				}
-			}
-			return s;
-		});
-	}
-	else {
-        rxIds.lastIndex = 0;
-		return str.replace(rxIds, function(s) {
-			var ch = s.charAt(0);
-			if (ch == "$") {
-                var index = 0;
-                for (var c = s.length - 1; index < c; ++index) {
-                    if (s.charAt(index + 1) != '$') break;
-                }
-
-                ++index;
-                return expandAbbreviated(s, index, args[index]);
-			}
-			else if (ch == "@") {
-                var length = 1;
-                for (var c = s.length; length < c; ++length) {
-                    if (s.charAt(length) != '@') break;
-                }
-                
-                var a = (args.length > length + 1 ? args[args.length - length] : '');
-                return expandAbbreviated(s, length, a);
-			}
-			else if (ch == "#") {
-				return args[parseInt(s.substr(1)) + 1];
-			}
-
-			return s;
-		});
-	}
-}
-
-function lambdaJoin(splited, v, k) {
-    for (var i = 1, c = splited.length; i < c; i += 2) {
-        var s = splited[i];
-        if (typeof s == 'number') {
-            splited[i] = arguments[s + 1];
-        }
-    }
-    
-    return splited.join('');
-}
-
-function lambdaParse(str, argCount) {
-	if (!str) return null;
-	if (typeof(str) == "function") return str;
-
-	var names;
-	
-	var m = /^\s*(\w+)\s*=>(.+)$/.exec(str);
-	if (m) {
-		names = [m[1]];
-		str = m[2];
-	}
-	else if (m = /^\s*\(\s*([\w\s,]*)\s*\)\s*=>(.+)$/.exec(str)) {
-		names = m[1].split(/\s*,\s*/);
-		str = m[2];
-	}
-
-	if (names) {
-		names.push("return " + str + ";");
-		return Function.apply(null, names);
-	}
-	else {
-		names = [];
-		for (var i = 0; i < argCount; ++i) {
-			names.push("$" + i);
-		}
-
-		var params = [str].concat(names);
-		str = lambdaReplace.apply(null, params);
-
-		names.push("return " + str + ";");
-		return Function.apply(null, names);
-	}
-}
-
-function getFunctionArgumentCount(f) {
-    rxFunctionArgList.lastIndex = 0;
-    return rxFunctionArgList.exec(f)[1].split(',').length;
-}
-
-function quote(s) {
-	var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
-	var meta = {    // table of character substitutions
-		'\b': '\\b',
-		'\t': '\\t',
-		'\n': '\\n',
-		'\f': '\\f',
-		'\r': '\\r',
-		'"' : '\\"',
-		'\\': '\\\\'
-	};
-
-	return escapable.test(s) ? '"' + s.replace(escapable, function (a) {
-		var c = meta[a];
-		return c
-			? c
-			: '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-	}) + '"' : '"' + s + '"';
-}
-
-function extend(from, to) {
-	var emptyCtor = function() {};
-	emptyCtor.prototype = from.prototype;
-	
-    to.prototype = new emptyCtor();
-    to.prototype.constructor = to;
-}
-
-function toURLEncoded(prefix, obj) {
-	var prefixEqual = (prefix ? prefix + "=" : "");
-
-	if (typeof(obj) == "boolean") {
-		return prefixEqual + (obj ? "1" : "0");
-	}
-	else if (typeof(obj) == "string") {
-		return prefixEqual + encodeURIComponent(obj);
-	}
-	else if (typeof(obj) == "number") {
-		return prefixEqual + obj.toString();
-	}
-	else if (typeof(obj) == "object") {
-		var array = [];
-		from(obj).each(function(v, k) {
-			k = encodeURIComponent(k);
-
-			var key;
-			if (prefix) {
-				key = prefix + "[" + k + "]";
-			}
-			else {
-				key = k;
-			}
-
-			array.push(toURLEncoded(key, v));
-		});
-
-		return array.join("&");
-	}
-
-	return "";
-}
-
-function getTrimmingArgument(left, right, arg) {
-    var leftTarget;
-    var rightTarget;
-    
-    if (!left || left instanceof Array) {
-        leftTarget = (!left ? defaultTrimmingTarget : left);
-        left = defaultTrimmingPredicateArray;
-    } else if (left instanceof Iterable) {
-        leftTarget = defaultTrimmingTarget;
-        left = defaultTrimmingPredicateIterable;
-    } else if (typeof left == 'string') {
-        left = lambdaReplace(left, '$', '$$', '@.a');
-    }
-
-    if (!right || right instanceof Array) {
-        rightTarget = (!right ? defaultTrimmingTarget : right);
-        right = defaultTrimmingPredicateArray;
-    } else if (right instanceof Iterable) {
-        rightTarget = defaultTrimmingTarget;
-        right = defaultTrimmingPredicateIterable;
-    } else if (typeof right == 'string') {
-        right = lambdaReplace(right, '$', '$$', '@.a');
-    }
-
-    var leftArg = {t: leftTarget, a: arg};
-    var rightArg = {t: rightTarget, a: arg};
-
-    return {left: left, leftArg: leftArg, right: right, rightArg: rightArg};
-}
-
-function prepareVariables(hints, varName, value, ___) {
-    var result = {};
-    var decl = [];
-
-    for (var i = 0, c = hints.length; i < c; ++i) {
-        var argIndex = i * 2 + 1;
-        
-        var varName = arguments[argIndex];
-        if (!varName) continue;
-
-        var value = arguments[argIndex + 1];
-
-        if (value instanceof Array) {
-            if (hints[i] == 0) {
-                for (var j = 0, c2 = value.length; j < c2; ++j) {
-                    value[j] = '';
-                }
-                result[varName] = value;
-            } else {
-                result[varName] = value;
-            }
-        } else {
-            if (hints[i] <= 1) {
-                result[varName] = value;
-            } else {
-                decl.push('var ' + varName + '=' + value + ';');
-                result[varName] = varName;
-            }
-        }
-    }
-
-    result.decl = decl.join('');
-    return result;
-}
-
-//
-// Grouper
-//
-
-function Grouper(comparer, arg) {
-	this.$o = from(this.o = []);
-	this.c = comparer;
-	this.a = arg;
-}
-
-Grouper.prototype._getPrimitiveList = function(name, key) {
-	var bucket = this[name];
-	if (!bucket) this[name] = bucket = {};
-	
-	key = key.toString();
-	
-	var list = bucket[key];
-	if (!list) {
-		bucket[key] = list = [];
-		this.o.push({k: key, l: list});
-	}
-	return list;
-};
-
-Grouper.prototype._getList = function(key) {
-	var c = this.c;
-	var pred;
-
-	if (!c) {
-		var type = typeof(key);
-		switch (type) {
-		case "string": return this._getPrimitiveList("s", key);
-		case "number": return this._getPrimitiveList("n", key);
-		case "boolean": return this._getPrimitiveList("b", key);
-		}
-
-		pred = "$k==@k";
-	}
-	else if (typeof(c) == "string") {
-		pred = lambdaReplace(c, "$k", "@k", "@a");
-	}
-	else {
-		pred = "@c($k,@k,@a)";
-	}
-
-	var obj = this.$o.first(pred, {k: key, c: c, a: this.a});
-	if (obj) {
-		return obj.l;
-	}
-	else {
-		var result = [];
-		this.o.push({k: key, l: result});
-		return result;
-	}
-};
-
-Grouper.prototype.add = function(key, value) {
-	var list = this._getList(key);
-	list.push(value);
-};
-
-Grouper.prototype.$each = function(proc, arg) {
-	return !this.$o.selectPair("from($l)", "$k").each(proc, arg).broken;
-};
-
-//
-// Cache
-//
-
-var cacheSlot = {};
-var cacheFifo = [];
-
-function getCacheSlot(name) {
-	var slot = cacheSlot[name];
-	if (!slot) {
-		slot = cacheSlot[name] = {};
-	}
-	
-	return slot;
-}
-
-var cache = {
-    get: function (name, str) {
-        var slot = getCacheSlot(name);
-        var result = slot[str];
-
-        if (result && cacheFifo.length > 2) {
-            for (var i = 0, l = cacheFifo.length; i < l; i += 2) {
-                if (cacheFifo[i] == name && cacheFifo[i + 1] == str) {
-                    cacheFifo.splice(i, 2);
-                    cacheFifo.push(name, str);
-                    break;
-                }
-            }
-        }
-        
-        return result;
-    },
-    
-    set: function (name, str, it) {
-        var slot = getCacheSlot(name);
-        
-        var added = !(str in slot);
-        slot[str] = it;
-
-        if (added) {
-            cacheFifo.push(name, str);
-            
-            var maxFifo = CACHE_MAX * 2;
-            while (cacheFifo.length > maxFifo) {
-                slot = cacheSlot[cacheFifo[0]];
-                delete slot[cacheFifo[1]];
-                
-                cacheFifo.splice(0, 2);
-            }
-        }
-    }
-};
+var lambdaParse = from.lambda.parse;
+var extend = from.utils.extend;
+var isSync = from.utils.isIterable;
 
 //
 // Iterable
@@ -558,223 +43,256 @@ function Iterable(it) {
 	this.each = it;
 }
 
-Iterable.prototype.broken = false;
-
-Iterable.prototype.where = function(pred, arg0) {
-	var pr;
-	if (typeof(pred) == "string") {
-		pr = cache.get("($_$$_a0)", pred);
-		if (!pr) {
-			pr = "(" + lambdaReplace(pred, "$", "$$", "@a0") + ")";
-			cache.set("($_$$_a0)", pred, pr);
-		}
-	}
-	else {
-		pr = "@pr($,$$,@a0)";
-	}
+Iterable.prototype.where = function(pred, argOuter) {
+    pred = lambdaParse(pred, 3);
 
 	var self = this;
-	function it(proc, arg) {
-		var p;
-		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a)", proc);
-			if (!p) {
-				p = "(" + lambdaReplace(proc, "$", "$$", "@a") + ")";
-				cache.set("($_$$_a)", proc, p);
-			}
-		}
-		else {
-			p = "@p($,$$,@a)";
-		}
+	function it(proc, callback, arg) {
+        proc = lambdaParse(proc, 4);
 
-		this.broken = self.each(pr + "?" + p + ":0", {p: proc, pr: pred, a0: arg0, a: arg}).broken;
+        self.each(
+            function (v, k, next) {
+                if (pred(v, k, argOuter)) {
+                    proc(v, k, next, arg);
+                } else {
+                    next();
+                }
+            },
+            null,
+            function (broken) {
+                if (callback) callback(broken);
+            });
 		return this;
 	};
 
 	return new Iterable(it);
 };
 
-Iterable.prototype.aggregate = function(seed, proc, arg) {
-    var procStr;
-    if (typeof(proc) == "string") {
-	    procStr = cache.get("(c_$_$$_a)", proc);
-	    if (!procStr) {
-		    procStr = "(" + lambdaReplace(proc, "@c", "$", "$$", "@a") + ")";
-		    cache.set("(c_$_$$_a)", proc, procStr);
-	    }
-    }
-    else {
-	    procStr = "@p(@c,$,$$,@a)";
-    }
+Iterable.prototype.aggregate = function(seed, proc, arg, callback) {
+    proc = lambdaParse(proc, 5);
 
     if (seed === null) {
-	    var a = {p: proc, f: true, a: arg};
-	    this.each("@f?(@f=false,@c=$,0):(@c=" + procStr + ",0)", a);
-	    return a.c;
-	} else {
-	    var a = {c: seed, a: arg, p: proc};
-	    this.each("(@c=" + procStr + "),0", a);
-	    return a.c;
+        var first = true;
+        var c;
+
+        this.each(
+            function (v, k, n, a) {
+                function next(result) {
+                    c = result;
+                    n();
+                }
+
+                if (first) {
+                    first = false;
+                    next(v);
+                } else {
+                    proc(c, v, k, next, arg);
+                }
+            },
+            null,
+            function (broken) {
+                if (callback) callback(c);
+            });
+    } else {
+        var c = seed;
+        this.each(
+            function (v, k, n, a) {
+                function next(result) {
+                    c = result;
+                    n();
+                }
+
+                proc(c, v, k, next, arg);
+            },
+            null,
+            function (broken) {
+                if (callback) callback(c);
+            });
     }
+
+    return this;
 };
 
-Iterable.prototype.all = function(pred, arg) {
-	var p;
-	if (typeof(pred) == "string") {
-		p = cache.get("($_$$_a)", pred);
-		if (!p) {
-			p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			cache.set("($_$$_a)", pred, p);
-		}
-	}
-	else {
-		p = "@p($,$$,@a)";
-	}
-	
-    return !this.each("!" + p + "?false:0", {a: arg, p: pred}).broken;
+Iterable.prototype.all = function(pred, arg, callback) {
+    pred = lambdaParse(pred, 3);
+
+    this.each(
+        function (v, k, n) {
+            n(pred(v, k, arg));
+        },
+        null,
+        function (broken) {
+            if (callback) callback(!broken);
+        });
+    return this;
 };
 
-Iterable.prototype.any = function(pred, arg) {
-    var _p;
-	if (!pred) {
-	    _p = 'false';
-	} else {
-	    var p;
-	    if (typeof(pred) == "string") {
-		    p = cache.get("($_$$_a)", pred);
-		    if (!p) {
-			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			    cache.set("($_$$_a)", pred, p);
-		    }
-	    }
-	    else {
-		    p = "@p($,$$,@a)";
-	    }
-	    
-	    _p = p + '?false:0';
-	}
-	
-   	return this.each(_p, {a: arg, p: pred}).broken;
+Iterable.prototype.any = function(pred, arg, callback) {
+    if (arguments.length == 1) {
+        callback = pred;
+        pred = function () { return true; };
+    }
+
+    pred = lambdaParse(pred, 3);
+
+    this.each(
+        function (v, k, n) {
+            n(!pred(v, k, arg));
+        },
+        null,
+        function (broken) {
+            if (callback) callback(broken);
+        });
+    return this;
 };
 
-Iterable.prototype.at = function(index) {
-	return this.skip(index).first();
+Iterable.prototype.at = function(index, callback) {
+	this.skip(index).first(callback);
+    return this;
 };
 
-Iterable.prototype.atOrDefault = function(index, defValue) {
-	var v = this.at(index);
-	return (v === undefined ? defValue : v);
+Iterable.prototype.atOrDefault = function (index, defValue, callback) {
+    this.at(index, function (v) {
+        if (v === undefined) {
+            callback(defValue);
+        } else {
+            callback(v);
+        }
+    });
+    return this;
 };
 
-Iterable.prototype.average = function() {
-	var a = {f: true};
-	this.each("@f?(@f=false,@s=$,@c=1,0):(@s+=$,++@c)", a);
+Iterable.prototype.average = function (callback) {
+    var first = true;
+    var sum, couunt;
 
-	return a.s / a.c;
+    this.each(
+        function (v, k, n) {
+            if (first) {
+                first = false;
+                sum = v;
+                count = 1;
+            } else {
+                sum += v;
+                ++count;
+            }
+            n();
+        },
+        null,
+        function () {
+            if (callback) callback(sum / count);
+        });
+
+	return this;
 };
 
 Iterable.prototype.concat = function(second) {
 	var self = this;
-	function iterator(proc, arg) {
-		if (self.each(proc, arg).broken) {
-			this.broken = true;
-			return this;
-		}
-		
-		this.broken = from(second).each(proc, arg).broken;
+	function iterator(proc, arg, callback) {
+        proc = lambdaParse(proc, 4);
+
+        self.each(proc, arg, function (broken) {
+            if (broken) {
+                callback(true);
+            } else {
+                async(second).each(proc, arg, callback);
+            }
+        });
     	return this;
 	}
 
 	return new Iterable(iterator);
 };
 
-Iterable.prototype.contains = function(value, comparer, arg) {
-	var c;
-	if (!comparer) {
-		c = "$==@v";
-	}
-	else if (typeof(comparer) == "string") {
-		c = cache.get("(v_$_a)", comparer);
-		if (!c) {
-			c = "(" + lambdaReplace(comparer, "@v", "$", "@a") + ")";
-			cache.set("(v_$_a)", comparer, c);
-		}
-	}
-	else {
-		c = "@c(@v,$,@a)";
-	}
+Iterable.prototype.contains = function(value, comparer, arg, callback) {
+    if (arguments.length == 2) {
+        callback = comparer;
+        comparer = null;
+    }
 
-	var a = {v: value, a: arg, c: comparer, r: false};
-	this.each(c + "?((@r=true),false):0", a);
+    if (comparer) {
+        comparer = lambdaParse(comparer, 3);
+    } else {
+        comparer = function (a, b) { return a == b; };
+    }
 
-	return a.r;
+    this.each(
+        function (v, k, n, a) {
+            n(!comparer(value, v, arg));
+        }, null,
+        function (broken) {
+            if (callback) callback(broken);
+        });
+
+	return this;
 };
 
-Iterable.prototype.count = function(pred, arg) {
-    var _p;
-	if (!pred) {
-	    _p = "++@c,0";
-	} else {
-	    var p;
-	    if (typeof(pred) == "string") {
-		    p = cache.get("($_$$_a)", pred);
-		    if (!p) {
-			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			    cache.set("($_$$_a)", pred, p);
-		    }
-	    }
-	    else {
-		    p = "@p($,$$,@a)";
-	    }
-	    
-	    _p = p + "?++@c:0";
-	}
-	
+Iterable.prototype.count = function(pred, arg, callback) {
+    if (arguments.length == 1) {
+        callback = pred;
+        pred = function () { return true; };
+    }
 
-	var a = {a: arg, p: pred, c: 0};
-	this.each(_p, a);
-	return a.c;
+    var count = 0;
+
+    this.each(
+           function (v, k, n, a) {
+            if (pred(v, k, arg)) ++count;
+            n();
+        }, null,
+        function () {
+            if (callback) callback(count);
+        });
+    return this;
 };
 
 Iterable.prototype.defaultIfEmpty = function(defValue) {
 	var self = this;
-	var it = function(proc, arg) {
-		if (!self.each("false").broken) {
-			if (typeof(proc) == "string") {
-				proc = lambdaParse(proc, 3);
-			}
-			this.broken = (proc(defValue, 0, arg) === false);
-		}
-		else {
-			this.broken = self.each(proc, arg).broken;
-		}
-		return this;
+	var it = function(proc, arg, callback) {
+        proc = lambdaParse(proc, 4);
+
+        var any = false;
+        self.each(
+            function (v, k, n) {
+                any = true;
+                proc(v, k, n, arg);
+            });
+
+        if (!any) {
+            proc(defValue, 0, function (result) {
+                if (callback) callback(result === false);
+            }, arg);
+        }
+
+        return this;
 	};
 
 	return new Iterable(it);
 };
 
 Iterable.prototype.distinct = function(comparer, arg) {
-	var c = (comparer ? ",@c,@a" : "");
-
-	var l = [];
+	var list = [];
+    var fromList = from(list);
 
 	var self = this;
-	function it(proc, arg0) {
-		var p;
-		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a0)", proc);
-			if (!p) {
-				p = "(" + lambdaReplace(proc, "$", "$$", "@a0") + ")";
-				cache.set("($_$$_a0)", proc, p);
-			}
-		}
-		else {
-			p = "@p($,$$,@a0)";
-		}
+	function it(proc, argInner, callback) {
+        proc = lambdaParse(proc, 4);
 
-		this.broken = self.each("!from(@l).contains($" + c + ")?(@l.push($)," + p + "):0", {c: comparer, l: l, p: proc, a0: arg0}).broken;
-		return this;
+        self.each(
+            function (v, k, n) {
+                if (!fromList.contains(v, comparer, arg)) {
+                    list.push(v);
+                    fromList = from(list);
+
+                    proc(v, k, n, argInner);
+                } else {
+                    n();
+                }
+            }, null,
+            function (broken) {
+                if (callback) callback(broken);
+            });
+        return this;
 	};
 
 	return new Iterable(it);
@@ -782,64 +300,89 @@ Iterable.prototype.distinct = function(comparer, arg) {
 
 Iterable.prototype.dump = function () {
     if (platform == 'nodejs') {
-        this.each('console.log("key = " + $$ + ", value = " + $)');
+        this.each('console.log("key = " + $$ + ", value = " + $), @@()');
     } else {
-        this.each('document.writeln("key = " + $$ + ", value = " + $ + "<br/>")');
+        this.each('document.writeln("key = " + $$ + ", value = " + $ + "<br/>"), @@()');
     }
     
     return this;
 };
 
-Iterable.prototype.except = function(second, comparer, arg0) {
-	var compStr;
-	if (comparer) {
-		compStr = ",@c,@a0";
-	}
-	else {
-		compStr = "";
-	}
+Iterable.prototype.except = function(second, comparer, arg) {
+    second = auto(second);
+
+    var contains;
+    if (isSync(second)) {
+        contains = function (value, comparer, arg, callback) {
+            callback(second.contains(value, comparer, arg));
+        };
+    } else {
+        contains = function (value, comparer, arg, callback) {
+            second.contains(value, comparer, arg, callback);
+        };
+    }
 	
 	var self = this;
-	function it(proc, arg) {
-		if (typeof(proc) == "string") {
-			this.broken = self.each("@s.contains($" + compStr + ")?0:(" + lambdaReplace(proc, "$", "$$", "@a") + ")", {c: comparer, a0: arg0, s: from(second), a: arg}).broken;
-		}
-		else {
-			this.broken = self.each("@s.contains($" + compStr + ")?0:@p($,$$,@a)", {c: comparer, a0: arg0, p: proc, s: from(second), a: arg}).broken;
-		}
+	function it(proc, arg, callback) {
+        proc = lambdaParse(proc, 4);
+
+        self.each(
+            function (v, k, n) {
+                contains(v, comparer, arg, function (result) {
+                    if (!result) {
+                        proc(v, k, n, arg);
+                    } else {
+                        n();
+                    }
+                });
+            }, null,
+            function (broken) {
+                if (callback) callback(broken);
+            });
 		return this;
 	}
 
 	return new Iterable(it);
 };
 
-Iterable.prototype.first = function(pred, arg) {
-	if (!pred) {
-		var a = {};
-		this.each("(@r=$),false", a);
-		return a.r;
-	}
-	else if (typeof(pred) == "string") {
-		var a = {a: arg};
-		this.each("(" + lambdaReplace(pred, "$", "$$", "@a") + ")?(@r=$,false):0", a);
-		return a.r;
-	}
-	else {
-		var a = {a: arg, p: pred};
-		this.each("@p($,$$,@a)?(@r=$,false):0", a);
-		return a.r;
-	}	
+Iterable.prototype.first = function(pred, arg, callback) {
+    if (arguments.length == 1) {
+        callback = pred;
+        pred = function () { return true; };
+    }
+
+    var result;
+    this.each(
+        function (v, k, n) {
+            if (pred(v, k, arg)) {
+                result = v;
+                n(false);
+            } else {
+                n();
+            }
+        }, null,
+        function (broken) {
+            if (callback) callback(result);
+        });
+    return this;
 };
 
-Iterable.prototype.firstOrDefault = function(pred, defValue, arg) {
-	if (arguments.length <= 1) {
-		var v = this.first();
-		return (v === undefined ? pred : v);
-	}
-	else {
-		var v = this.first(pred, arg);
-		return (v === undefined ? defValue : v);
-	}
+Iterable.prototype.firstOrDefault = function(pred, defValue, arg, callback) {
+    if (arguments.length == 2) {
+        callback = defValue;
+        defValue = pred;
+        pred = function () { return true; };
+    }
+
+    this.first(pred, arg, function (result) {
+        if (!callback) return;
+        if (result === undefined) {
+            callback(defValue);
+        } else {
+            callback(result);
+        }
+    });
+    return this;
 };
 
 Iterable.prototype.groupBy = function (selectors, comparer, arg) {
@@ -1662,14 +1205,114 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
+// AsyncIterable
+//
+
+function AsyncIterable(initializer, looper, progressor) {
+    this.initializer = initializer;
+    this.looper = looper;
+    this.progressor = progressor;
+}
+extend(Iterable, AsyncIterable);
+
+AsyncIterable.prototype.each = function(proc, _a, callback) {
+    var initializer = this.initializer;
+    var data = {};
+
+    if (initializer && !initializer(data, callback)) {
+        return this;
+    }
+
+    var looper = this.looper;
+    var progressor = this.progressor;
+
+    var inLoop;
+    var callNext;
+
+    proc = lambdaParse(proc, 3);
+
+    function loop() {
+        inLoop = true;
+
+        do {
+            callNext = false;
+            looper(data, proc, _a, next, callback);
+        } while (callNext);
+
+        inLoop = false;
+    }
+
+    function next(broken) {
+        if (broken === false) {
+            if (callback) callback(true);
+        } else {
+            if (progressor) progressor(data);
+            if (inLoop) {
+                callNext = true;
+            } else {
+                loop();
+            }
+        }
+    }
+
+    loop();
+
+	return this;
+};
+
+//
 // RandomAccessIterable
 //
 
 function RandomAccessIterable(data) {
 	this.data = data;
     this.rev = false;
+
+    var self = this;
+
+    function initializer(d, callback) {
+        var region = self.measureRegion();
+        var s = region.start;
+        var e = region.end;
+        
+        if (s >= e) {
+            if (callback) callback(false);
+            return false;
+        }
+        
+        d.take = lambdaParse(region.take, 3);
+        d.takeArg = region.takeArg;
+        d.s = s;
+        d.e = e;
+
+        return true;
+    }
+
+    function looper(d, proc, arg, next, callback) {
+        var s = d.s;
+        var e = d.e;
+
+        if (s < e) {
+            var key = (!self.rev ? s : e - 1);
+            var value = self.getItem(self.data, key);
+            
+            if (d.take && !d.take(value, key, d.takeArg)) {
+                if (callback) callback(false);
+            } else {
+                proc(value, key, next, arg);
+            }
+        } else {
+            if (callback) callback(false);
+        }
+    }
+
+    function progressor(d) {
+        if (!self.rev) ++d.s; else --d.e;
+    }
+
+    AsyncIterable.call(this, initializer, looper, progressor);
 }
-extend(Iterable, RandomAccessIterable);
+extend(AsyncIterable, RandomAccessIterable);
 
 RandomAccessIterable.prototype.initRegion = function () {
     var r = this.region;
@@ -1889,95 +1532,71 @@ RandomAccessIterable.prototype.measureRegion = function () {
     return region;
 };
 
-RandomAccessIterable.prototype.each = function(proc, _a) {
+/*RandomAccessIterable.prototype.each = function(proc, _a, callback) {
     var region = this.measureRegion();
     var s = region.start;
     var e = region.end;
     
     if (s >= e) {
-        this.broken = false;
+        if (callback) callback(false);
         return this;
     }
     
 	var data = this.data;
-    var take = region.take;
+    var take = lambdaParse(region.take, 3);
     var takeArg = region.takeArg;
-    var p;
-    
-    var typeProc = typeof proc;
-    var typeTake = typeof take;
-    
-    if (typeProc == 'function' && (!take || typeTake == 'function')) {
-        this.broken = false;
-        
-        var rev = this.rev;
-        var getItem = this.getItem;
+    var getItem = this.getItem;
 
-        for (var s = region.start, e = region.end; s < e; !rev ? ++s : --e) {
-            var key = (!rev ? s : e - 1);
-            var value = getItem(data, key);
-            
-            if (take && !take(value, key, takeArg)) {
-                break;
-            } else if (proc(value, key, _a) === false) {
-                this.broken = true;
-                break;
-            }
-        }
-    } else {
-	    if (typeProc == "function") {
-            p = proc;
-            proc = '_p($,$$,@)';
-	    }
+    var rev = this.rev;
+    var broken = false;
 
-        if (take) {
-            if (typeTake == 'string') {
-                proc = '!(' + lambdaReplace(take, '$', '$$', '_tla') + ')?_b=false:' + proc;
-            } else {
-                proc = '!_tl($,$$,_tla)?_b=false:' + proc;
-            }
-        }
+    var s = region.start;
+    var e = region.end;
 
-        var dt = this.dataType + (this.rev ? '_reversed' : '');
-        var f = cache.get("each_" + dt, proc);
+    var inLoop;
+    var callNext;
 
-        if (!f) {
-            var splited = [];
-            var hints = lambdaGetUseCount(proc, 3, splited);
-            var defV, v;
+    proc = lambdaParse(proc, 3);
 
-            var i1, i2;
-            if (!this.rev) {
-                i1 = ''; i2 = '_s';
-            } else {
-                if (hints[1] == 0) {
-                    i1 = ''; i2 = '_e-1';
+    function loop() {
+        inLoop = true;
+
+        do {
+            callNext = false;
+            if (s < e) {
+                var key = (!rev ? s : e - 1);
+                var value = getItem(data, key);
+                
+                if (take && !take(value, key, takeArg)) {
+                    if (callback) callback(false);
                 } else {
-                    i1 = 'var _i=_e-1;'; i2 = '_i';
+                    proc(value, key, next, _a);
                 }
-            }
-
-            var srcIncrement;
-            if (!this.rev) {
-                srcIncrement = '++_s';
             } else {
-                srcIncrement = '--_e';
+                if (callback) callback(false);
             }
-            
-            var vars = prepareVariables(hints,
-                '_v', this.lambdaGetItem('s', i2, '_l'));
+        } while (callNext);
 
-            f = new Function(alias, "s", "_l", "_s", "_e", "a", "_tl", "_tla", "_p",
-                ["var _b=true;for(;_s<_e;", srcIncrement, "){", i1, vars.decl,
-                "if((", lambdaJoin(splited, vars._v, i2, "a"), ")===false){return _b;}}return false;"].join(''));
-            cache.set("each_" + dt, proc, f);
-        }
-
-        this.broken = f(from, data, data.length, region.start, region.end, _a, take, takeArg, p);
+        inLoop = false;
     }
 
+    function next(broken) {
+        if (broken === false) {
+            if (callback) callback(true);
+        } else {
+            if (!rev) ++s; else --e;
+            if (inLoop) {
+                callNext = true;
+            } else {
+                loop();
+            }
+        }
+    }
+
+    loop();
+
 	return this;
-};
+};*/
 
 RandomAccessIterable.prototype.at = function(index) {
     var r = this.measureRegion();
@@ -1986,28 +1605,6 @@ RandomAccessIterable.prototype.at = function(index) {
     } else {
 	    return this.getItem(this.data, r.end - index);
     }
-};
-
-RandomAccessIterable.prototype.count = function(pred, arg) {
-	if (!pred) {
-        var r = this.measureRegion();
-        if (!r.take) {
-		    return r.end - r.start;
-        }
-	}
-
-    return Iterable.prototype.count.call(this, pred, arg);
-};
-
-RandomAccessIterable.prototype.any = function (pred, arg) {
-    if (!pred) {
-        var r = this.measureRegion();
-        if (!r.take) {
-            return r.start < r.end;
-        }
-    }
-
-    return Iterable.prototype.any.call(this, pred, arg);
 };
 
 RandomAccessIterable.prototype.first = function(pred, arg) {
@@ -2277,13 +1874,23 @@ ArrayIterable.prototype.toJSON = function(track) {
 };
 
 ArrayIterable.prototype.toArray = function () {
-    if (this.rev) {
-        return RandomAccessIterable.prototype.toArray.call(this);
-    }
-    
-    var r = this.measureRegion();
-    if (!r.take) {
-        return this.data.slice(r.start, r.end);
+    if (this.mutable) {
+        if (this.rev) {
+        } else {
+            var r = this.measureRegion();
+            if (!r.take) {
+                return this.data.slice(r.start, r.end);
+            }
+        }
+    } else {
+        if (this.rev) {
+            return RandomAccessIterable.prototype.toArray.call(this);
+        }
+        
+        var r = this.measureRegion();
+        if (!r.take) {
+            return this.data.slice(r.start, r.end);
+        }
     }
 
     return Iterable.prototype.toArray.call(this);
@@ -2787,9 +2394,9 @@ RegExpIterable.prototype.first = function (pred, arg) {
     }
 };
 
-function from(obj, target) {
+function async(obj, target) {
     if (!obj) {
-	    return new Iterable(function() { return this; });
+	    return new Iterable(function(proc, arg, callback) { callback(false); return this; });
     } else if (obj instanceof Iterable) {
 		return obj;
     } else if (obj instanceof RegExp) {
@@ -2802,9 +2409,9 @@ function from(obj, target) {
                 }
             };
         }
-    } else if (obj.$iterable) {
-        return from(obj.$iterable());
-    } else if (obj.$each) {
+    } else if (obj.$iterableAsync) {
+        return async(obj.$iterable());
+    } else if (obj.$eachAsync) {
 		var f = function(proc, arg) { this.broken = (obj.$each(proc, arg) === false); return this; };
 		return new Iterable(f);
 	} else if (typeof(obj) == "string") {
@@ -2816,111 +2423,28 @@ function from(obj, target) {
 	}
 };
 
-from.range = function(start, end, step) {
-	switch (arguments.length) {
-	case 1:
-		end = start;
-		start = 0;
-		step = 1;
-		break;
-		
-	case 2:
-		step = (end > start ? 1 : -1);
-		break;
-	}
+function auto(obj) {
+    if (!obj || typeof obj == 'string' || obj instanceof Array) {
+	    return from(obj);
+    } else if (obj instanceof Iterable || isSync(obj)) {
+        return obj;
+    } else if (obj.$iterableAsync || obj.$eachAsync) {
+        return async(obj);
+    } else {
+        return from(obj);
+    }
+}
 
-	function iterator(proc, arg) {
-		if (typeof(proc) == "string") {
-			var cacheName = (step > 0 ? "each_ru" : "each_rd");
-			var f = cache.get(cacheName, proc);
-			if (!f) {
-				f = new Function("s", "e", "st", "a", "for(var i=s;i" + (step > 0 ? "<" : ">") + "e;i+=st){if((" + lambdaReplace(proc, "i", "i", "a") + ")===false)return true;}return false;");
-				cache.set(cacheName, proc, f);
-			}
+return async;
 
-			this.broken = f(start, end, step, arg);
-		}
-		else {
-			this.broken = false;
-			if (step > 0) {
-				for (var i = start; i < end; i += step) {
-					if (proc(i, i, arg) === false) {
-						this.broken = true;
-						break;
-					}
-				}
-			}
-			else {
-				for (var i = start; i > end; i += step) {
-					if (proc(i, i, arg) === false) {
-						this.broken = true;
-						break;
-					}
-				}
-			}
-		}
+}
 
-		return this;
-	};
-	
-	return new Iterable(iterator);
-};
-
-from.repeat = function(elem, count) {
-	function iterator(proc, arg) {
-		if (typeof(proc) == "string") {
-			var f = cache.get("each_rpt", proc);
-			if (!f) {
-				f = new Function("c", "e", "a", "for(var i=0;i<c;++i){if((" + lambdaReplace(proc, "e", "i", "a") + ")===false)return true;}return false;");
-				cache.set("each_rpt", proc, f);
-			}
-
-			this.broken = f(count, elem, arg);
-		}
-		else {
-			this.broken = false;
-			for (var i = 0; i < count; ++i) {
-				if (proc(elem, i, arg) === false) {
-					this.broken = true;
-					break;
-				}
-			}
-		}
-		return this;
-	};
-	
-	return new Iterable(iterator);
-};
-
-from.setAlias = function (newAlias) {
-    alias = newAlias;
-};
-
-from.lambda = {
-	replace: lambdaReplace,
-	parse: lambdaParse,
-	getUseCount: lambdaGetUseCount,
-	join: lambdaJoin
-};
-
-from.utils = {
-    extend: extend,
-    isIterable: function (target) { return target instanceof Iterable; }
-};
-
-if (platform == 'nodejs') {
-    var ext = from(['.src.js', '.js']).firstOrDefault('@substr(-$length) == $', '', __filename);
-    var filename = __filename.substring(0, __filename.length - ext.length);
-
-    from.async = require(filename + '.async' + ext).init(from, platform);
-
-    module.exports = from;
-} else {
-    window.from = from;
+if (typeof window !== 'undefined' && window.from) {
+    window.from.async = init(window.from, 'web');
+} else if (typeof exports !== 'undefined') {
+    exports.init = init;
 }
 
 // End of code
-
-
 
 })();
