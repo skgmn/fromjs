@@ -554,7 +554,6 @@ function Iterable(it) {
 }
 
 Iterable.prototype.broken = false;
-Iterable.prototype.mutable = false;
 
 Iterable.prototype.where = function(pred, arg0) {
 	var pr;
