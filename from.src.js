@@ -1659,16 +1659,16 @@ Iterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
-// RandomAccessIterable
+// SequenceIterable
 //
 
-function RandomAccessIterable(data) {
+function SequenceIterable(data) {
 	this.data = data;
     this.rev = false;
 }
-extend(Iterable, RandomAccessIterable);
+extend(Iterable, SequenceIterable);
 
-RandomAccessIterable.prototype.initRegion = function () {
+SequenceIterable.prototype.initRegion = function () {
     var r = this.region;
     if (!r) {
         this.region = r = {
@@ -1684,7 +1684,7 @@ RandomAccessIterable.prototype.initRegion = function () {
     return r;
 };
 
-RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
+SequenceIterable.prototype.addRegionQuery = function (type, proc, arg) {
     var r = this.initRegion();
     var q = r.queries;
 
@@ -1702,7 +1702,7 @@ RandomAccessIterable.prototype.addRegionQuery = function (type, proc, arg) {
     return this;
 };
 
-RandomAccessIterable.prototype.clone = function () {
+SequenceIterable.prototype.clone = function () {
     var result = new this.constructor(this.data);
 
     var r = this.region;
@@ -1725,11 +1725,13 @@ RandomAccessIterable.prototype.clone = function () {
     }
     
     result.rev = this.rev;
+    result.where = this.where;
+    result.whereArg = this.whereArg;
 
     return result;
 };
 
-RandomAccessIterable.prototype.reverseRegion = function () {
+SequenceIterable.prototype.reverseRegion = function () {
     var r = this.initRegion();
 
     if (r) {
@@ -1744,7 +1746,7 @@ RandomAccessIterable.prototype.reverseRegion = function () {
     return this;
 };
 
-RandomAccessIterable.prototype.measureRegion = function () {
+SequenceIterable.prototype.measureRegion = function () {
     var region = this.initRegion();
 
     if (!region.measured) {
@@ -1886,7 +1888,7 @@ RandomAccessIterable.prototype.measureRegion = function () {
     return region;
 };
 
-RandomAccessIterable.prototype.each = function(proc, _a) {
+SequenceIterable.prototype.each = function(proc, _a) {
     var region = this.measureRegion();
     
 	var data = this.data;
@@ -1895,6 +1897,9 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
     var p;
     
     if (typeof proc == 'function' && (!take || typeof take == 'function')) {
+        //var where = this.where;
+        //var whereArg = this.whereArg;
+
         this.broken = false;
         
         if (!this.rev) {
@@ -1903,7 +1908,7 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
                 
                 if (take && !take(value, s, takeArg)) {
                     break;
-                } else if (proc(value, s, _a) === false) {
+                } else if (/*(!where || where(value, s, whereArg)) &&*/ proc(value, s, _a) === false) {
                     this.broken = true;
                     break;
                 }
@@ -1915,7 +1920,7 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
                 
                 if (take && !take(value, key, takeArg)) {
                     break;
-                } else if (proc(value, key, _a) === false) {
+                } else if (/*(!where || where(value, s, whereArg)) &&*/ proc(value, key, _a) === false) {
                     this.broken = true;
                     break;
                 }
@@ -1976,7 +1981,7 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
 	return this;
 };
 
-RandomAccessIterable.prototype.at = function(index) {
+SequenceIterable.prototype.at = function(index) {
     var r = this.measureRegion();
     if (!this.rev) {
 	    return this.getItem(r.start + index);
@@ -1985,7 +1990,7 @@ RandomAccessIterable.prototype.at = function(index) {
     }
 };
 
-RandomAccessIterable.prototype.count = function(pred, arg) {
+SequenceIterable.prototype.count = function(pred, arg) {
 	if (!pred) {
         var r = this.measureRegion();
         if (!r.take) {
@@ -1996,7 +2001,7 @@ RandomAccessIterable.prototype.count = function(pred, arg) {
     return Iterable.prototype.count.call(this, pred, arg);
 };
 
-RandomAccessIterable.prototype.any = function (pred, arg) {
+SequenceIterable.prototype.any = function (pred, arg) {
     if (!pred) {
         var r = this.measureRegion();
         if (!r.take) {
@@ -2007,7 +2012,7 @@ RandomAccessIterable.prototype.any = function (pred, arg) {
     return Iterable.prototype.any.call(this, pred, arg);
 };
 
-RandomAccessIterable.prototype.first = function(pred, arg) {
+SequenceIterable.prototype.first = function(pred, arg) {
 	if (!pred) {
         var r = this.measureRegion();
         if (!r.take) {
@@ -2029,7 +2034,7 @@ RandomAccessIterable.prototype.first = function(pred, arg) {
     return Iterable.prototype.first.call(this, pred, arg);
 };
 
-RandomAccessIterable.prototype.last = function(pred, arg) {
+SequenceIterable.prototype.last = function(pred, arg) {
 	if (!pred) {
         var r = this.measureRegion();
         if (!r.take) {
@@ -2051,27 +2056,27 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
     return Iterable.prototype.last.call(this, pred, arg);
 };
 
-RandomAccessIterable.prototype.orderBy = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this).addCriteria(keySelector, comparer, 1, arg);
+SequenceIterable.prototype.orderBy = function(keySelector, comparer, arg) {
+	return new OrderedSequenceIterable(this).addCriteria(keySelector, comparer, 1, arg);
 };
 
-RandomAccessIterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
-	return new OrderedRandomAccessIterable(this).addCriteria(keySelector, comparer, -1, arg);
+SequenceIterable.prototype.orderByDesc = function(keySelector, comparer, arg) {
+	return new OrderedSequenceIterable(this).addCriteria(keySelector, comparer, -1, arg);
 };
 
-RandomAccessIterable.prototype.reverse = function () {
+SequenceIterable.prototype.reverse = function () {
     return this.clone().reverseRegion();
 };
 
-RandomAccessIterable.prototype.select = function (selector, arg) {
+SequenceIterable.prototype.select = function (selector, arg) {
     if (typeof selector == 'function') {
-        return new MappedRandomAccessIterable(this.data, this, selector, arg);
+        return new MappedSequenceIterable(this.data, this, selector, arg);
     } else {
         return Iterable.prototype.select.call(this, selector, arg);
     }
 };
 
-RandomAccessIterable.prototype.skip = function (count) {
+SequenceIterable.prototype.skip = function (count) {
     if (count < 0) {
         return this.clone().addRegionQuery(!this.rev ? 'skipRight' : 'skipLeft', -count, null);
     } else if (count > 0) {
@@ -2081,11 +2086,11 @@ RandomAccessIterable.prototype.skip = function (count) {
     }
 };
 
-RandomAccessIterable.prototype.skipWhile = function (pred, arg) {
+SequenceIterable.prototype.skipWhile = function (pred, arg) {
     return this.clone().addRegionQuery(!this.rev ? 'skipLeft' : 'skipRight', pred, arg);
 };
 
-RandomAccessIterable.prototype.take = function (count) {
+SequenceIterable.prototype.take = function (count) {
     if (count < 0) {
         return this.clone().addRegionQuery(!this.rev ? 'takeRight' : 'takeLeft', -count, null);
     } else if (count > 0) {
@@ -2095,11 +2100,11 @@ RandomAccessIterable.prototype.take = function (count) {
     }
 };
 
-RandomAccessIterable.prototype.takeWhile = function (pred, arg) {
+SequenceIterable.prototype.takeWhile = function (pred, arg) {
     return this.clone().addRegionQuery(!this.rev ? 'takeLeft' : 'takeRight', pred, arg);
 };
 
-RandomAccessIterable.prototype.toArray = function () {
+SequenceIterable.prototype.toArray = function () {
     var r = this.measureRegion();
     if (!r.take) {
         var s = r.start;
@@ -2122,7 +2127,7 @@ RandomAccessIterable.prototype.toArray = function () {
     return Iterable.prototype.toArray.call(this);
 };
 
-RandomAccessIterable.prototype.trim = function(left, right, arg) {
+SequenceIterable.prototype.trim = function(left, right, arg) {
     var args = getTrimmingArgument(left, right, arg);
 
     var clone = this.clone();
@@ -2132,7 +2137,7 @@ RandomAccessIterable.prototype.trim = function(left, right, arg) {
     return clone;
 };
 
-RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
+SequenceIterable.prototype.zip = function(second, resultSelector, arg) {
     var rs;
     var index = (!this.rev ? '@.s++' : '--@.e');
 
@@ -2204,18 +2209,31 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
-// MappedRandomAccessIterable
+// MappedSequenceIterable
 //
 
-function MappedRandomAccessIterable(data, parent, mapper, arg) {
-    RandomAccessIterable.call(this, data);
+function MappedSequenceIterable(data, parent, mapper, arg) {
+    SequenceIterable.call(this, data);
     this.mapper = mapper;
     this.parent = parent;
     this.arg = arg;
 }
-extend(RandomAccessIterable, MappedRandomAccessIterable);
+extend(SequenceIterable, MappedSequenceIterable);
 
-MappedRandomAccessIterable.prototype.getItem = function (index) {
+MappedSequenceIterable.prototype.getItem = function (index) {
+    return this.mapper(this.parent.getItem(index), index, this.arg);
+};
+
+//
+// PartialSequenceIterable
+//
+
+function PartialSequenceIterable(data) {
+    SequenceIterable.call(this, data);
+}
+extend(SequenceIterable, PartialSequenceIterable);
+
+PartialSequenceIterable.prototype.getItem = function (index) {
     return this.mapper(this.parent.getItem(index), index, this.arg);
 };
 
@@ -2224,9 +2242,9 @@ MappedRandomAccessIterable.prototype.getItem = function (index) {
 //
 
 function StringIterable(str) {
-    RandomAccessIterable.call(this, str);
+    SequenceIterable.call(this, str);
 }
-extend(RandomAccessIterable, StringIterable);
+extend(SequenceIterable, StringIterable);
 
 StringIterable.prototype.dataType = 'string';
 
@@ -2267,9 +2285,9 @@ StringIterable.prototype.toJSON = function() {
 //
 
 function ArrayIterable(array) {
-    RandomAccessIterable.call(this, array);
+    SequenceIterable.call(this, array);
 }
-extend(RandomAccessIterable, ArrayIterable);
+extend(SequenceIterable, ArrayIterable);
 
 ArrayIterable.prototype.dataType = 'array';
 
@@ -2306,7 +2324,7 @@ ArrayIterable.prototype.toArray = function () {
         }
     } else {
         if (this.rev) {
-            return RandomAccessIterable.prototype.toArray.call(this);
+            return SequenceIterable.prototype.toArray.call(this);
         }
         
         var r = this.measureRegion();
@@ -2642,15 +2660,15 @@ OrderedIterable.prototype.thenByDesc = function(keySelector, comparer, arg) {
 };
 
 //
-// OrderedRandomAccessIterable
+// OrderedSequenceIterable
 //
 
-function OrderedRandomAccessIterable(it) {
+function OrderedSequenceIterable(it) {
     OrderedIterable.call(this, it);
 }
-extend(OrderedIterable, OrderedRandomAccessIterable);
+extend(OrderedIterable, OrderedSequenceIterable);
 
-OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
+OrderedSequenceIterable.prototype.each = function(proc, arg) {
     var uses, splited;
     var keyRequired = this.keyRequired;
     if (!keyRequired) {
