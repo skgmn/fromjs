@@ -1,5 +1,5 @@
 /**
- * from.js v2.1.7
+ * from.js v2.2.0.0
  *
  * Copyright 2012-2013 suckgamony@gmail.com
  * 
@@ -565,9 +565,6 @@ Iterable.prototype.where = function(pred, arg0) {
 			cache.set("($_$$_a0)", pred, pr);
 		}
 	}
-	else {
-		pr = "@pr($,$$,@a0)";
-	}
 
 	var self = this;
 	function it(proc, arg) {
@@ -578,12 +575,17 @@ Iterable.prototype.where = function(pred, arg0) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a") + ")";
 				cache.set("($_$$_a)", proc, p);
 			}
-		}
-		else {
-			p = "@p($,$$,@a)";
+		    this.broken = self.each(pr + "?" + p + ":0", {a0: arg0, a: arg}).broken;
+        } else if (pr) {
+		    this.broken = self.each(pr + "?@p($,$$,@a):0", {p: proc, a0: arg0, a: arg}).broken;
+		} else {
+            this.broken = self.each(function (v, k, a) {
+                if (pred(v, k, arg0) && proc(v, k, a) === false) {
+                    return false;
+                }
+            }).broken;
 		}
 
-		this.broken = self.each(pr + "?" + p + ":0", {p: proc, pr: pred, a0: arg0, a: arg}).broken;
 		return this;
 	};
 
@@ -1167,12 +1169,9 @@ Iterable.prototype.select = function(selector, arg0) {
 			cache.set("($_$$_a0)", selector, s);
 		}
 	}
-	else {
-		s = "@s($,$$,@a0)";
-	}
 	
 	iterator = function(proc, arg) {
-		if (typeof(proc) == "string") {
+		if (typeof proc == "string") {
 		    var splited = [];
 			var hint = lambdaGetUseCount(proc, 3, splited);
 
@@ -1185,19 +1184,22 @@ Iterable.prototype.select = function(selector, arg0) {
 			default: list.push("(@v=" + s + ")"); v = "@v"; break;
 			}
 
-			switch (hint[1]) {
+			/*switch (hint[1]) {
 			case 0: k = ""; break;
 			case 1: k = "(@i++)"; break;
 			default: list.push("(@j=@i++)"); k = "@j"; break;
-			}
+			}*/
 
-			list.push(lambdaJoin(splited, v, k, "@a"));
+			list.push(lambdaJoin(splited, v, '$$', "@a"));
 
-			this.broken = self.each(list.join(","), {s: selector, a0: arg0, a: arg, i: 0}).broken;
-		}
-		else {
-			this.broken = self.each("@p(" + s + ",@i++,@a)", {s: selector, a0: arg0, a: arg, i: 0, p: proc}).broken;
-		}
+			this.broken = self.each(list.join(","), {s: selector, a0: arg0, a: arg}).broken;
+		} else if (s) {
+			this.broken = self.each("@p(" + s + ",$$,@a)", {s: selector, a0: arg0, a: arg, p: proc}).broken;
+		} else {
+            this.broken = self.each(function (v, k, a) {
+                if (proc(selector(v, k, arg0), k, a) === false) return false;
+            }).broken;
+        }
 
 		return this;
 	};
@@ -1887,45 +1889,47 @@ RandomAccessIterable.prototype.measureRegion = function () {
 
 RandomAccessIterable.prototype.each = function(proc, _a) {
     var region = this.measureRegion();
-    var s = region.start;
-    var e = region.end;
-    
-    if (s >= e) {
-        this.broken = false;
-        return this;
-    }
     
 	var data = this.data;
     var take = region.take;
     var takeArg = region.takeArg;
     var p;
     
-    var typeProc = typeof proc;
-    var typeTake = typeof take;
-    
-    if (typeProc == 'function' && (!take || typeTake == 'function')) {
+    if (typeof proc == 'function' && (!take || typeof take == 'function')) {
         this.broken = false;
         
-        var rev = this.rev;
-        for (var s = region.start, e = region.end; s < e; !rev ? ++s : --e) {
-            var key = (!rev ? s : e - 1);
-            var value = data[key];
-            
-            if (take && !take(value, key, takeArg)) {
-                break;
-            } else if (proc(value, key, _a) === false) {
-                this.broken = true;
-                break;
+        if (!this.rev) {
+            for (var s = region.start, e = region.end; s < e; ++s) {
+                var value = this.getItem(s);
+                
+                if (take && !take(value, s, takeArg)) {
+                    break;
+                } else if (proc(value, s, _a) === false) {
+                    this.broken = true;
+                    break;
+                }
+            }
+        } else {
+            for (var s = region.start, e = region.end; s < e; --e) {
+                var key = e - 1;
+                var value = this.getItem(key);
+                
+                if (take && !take(value, key, takeArg)) {
+                    break;
+                } else if (proc(value, key, _a) === false) {
+                    this.broken = true;
+                    break;
+                }
             }
         }
     } else {
-	    if (typeProc == "function") {
+	    if (typeof proc == "function") {
             p = proc;
             proc = '_p($,$$,@)';
 	    }
 
         if (take) {
-            if (typeTake == 'string') {
+            if (typeof take == 'string') {
                 proc = '!(' + lambdaReplace(take, '$', '$$', '_tla') + ')?_b=false:' + proc;
             } else {
                 proc = '!_tl($,$$,_tla)?_b=false:' + proc;
@@ -1976,9 +1980,9 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
 RandomAccessIterable.prototype.at = function(index) {
     var r = this.measureRegion();
     if (!this.rev) {
-	    return this.getItem(this.data, r.start + index);
+	    return this.getItem(r.start + index);
     } else {
-	    return this.getItem(this.data, r.end - index);
+	    return this.getItem(r.end - index);
     }
 };
 
@@ -2013,9 +2017,9 @@ RandomAccessIterable.prototype.first = function(pred, arg) {
 
             if (s < e) {
                 if (!this.rev) {
-			        return this.getItem(this.data, s);
+			        return this.getItem(s);
                 } else {
-                    return this.getItem(this.data, e - 1);
+                    return this.getItem(e - 1);
                 }
             } else {
                 return;
@@ -2035,9 +2039,9 @@ RandomAccessIterable.prototype.last = function(pred, arg) {
 
             if (s < e) {
                 if (!this.rev) {
-                    return this.getItem(this.data, e - 1);
+                    return this.getItem(e - 1);
                 } else {
-                    return this.getItem(this.data, s);
+                    return this.getItem(s);
                 }
             } else {
                 return;
@@ -2058,6 +2062,14 @@ RandomAccessIterable.prototype.orderByDesc = function(keySelector, comparer, arg
 
 RandomAccessIterable.prototype.reverse = function () {
     return this.clone().reverseRegion();
+};
+
+RandomAccessIterable.prototype.select = function (selector, arg) {
+    if (typeof selector == 'function') {
+        return new MappedRandomAccessIterable(this.data, this, selector, arg);
+    } else {
+        return Iterable.prototype.select.call(this, selector, arg);
+    }
 };
 
 RandomAccessIterable.prototype.skip = function (count) {
@@ -2091,19 +2103,17 @@ RandomAccessIterable.prototype.takeWhile = function (pred, arg) {
 RandomAccessIterable.prototype.toArray = function () {
     var r = this.measureRegion();
     if (!r.take) {
-        var get = this.getItem;
-        var data = this.data;
         var s = r.start;
         var e = r.end;
 
         var result = new Array(e - s);
         if (!this.rev) {
             for (var i = s; i < e; ++i) {
-                result[i - s] = get(data, i);
+                result[i - s] = this.getItem(i);
             }
         } else {
             for (var i = e; i > s; --i) {
-                result[e - i] = get(data, i - 1);
+                result[e - i] = this.getItem(i - 1);
             }
         }
 
@@ -2195,6 +2205,22 @@ RandomAccessIterable.prototype.zip = function(second, resultSelector, arg) {
 };
 
 //
+// MappedRandomAccessIterable
+//
+
+function MappedRandomAccessIterable(data, parent, mapper, arg) {
+    RandomAccessIterable.call(this, data);
+    this.mapper = mapper;
+    this.parent = parent;
+    this.arg = arg;
+}
+extend(RandomAccessIterable, MappedRandomAccessIterable);
+
+MappedRandomAccessIterable.prototype.getItem = function (index) {
+    return this.mapper(this.parent.getItem(index), index, this.arg);
+};
+
+//
 // StringIterable
 //
 
@@ -2209,8 +2235,8 @@ StringIterable.prototype.lambdaGetItem = function (target, index) {
     return target + '.charAt(' + index + ')';
 };
 
-StringIterable.prototype.getItem = function (target, index) {
-    return target.charAt(index);
+StringIterable.prototype.getItem = function (index) {
+    return this.data.charAt(index);
 };
 
 StringIterable.prototype.toString = function (separator) {
@@ -2252,8 +2278,8 @@ ArrayIterable.prototype.lambdaGetItem = function (target, index) {
     return target + '[' + index + ']';
 };
 
-ArrayIterable.prototype.getItem = function (target, index) {
-    return target[index];
+ArrayIterable.prototype.getItem = function (index) {
+    return this.data[index];
 };
 
 ArrayIterable.prototype.toJSON = function(track) {
@@ -2650,8 +2676,8 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
                 for (var i = 0, l = crts.length; i < l; ++i) {
                     var crt = crts[i];
 
-                    var aSelected = crt.keySelector(it.getItem(data, a), a, crt.arg);
-                    var bSelected = crt.keySelector(it.getItem(data, b), b, crt.arg);
+                    var aSelected = crt.keySelector(it.getItem(a), a, crt.arg);
+                    var bSelected = crt.keySelector(it.getItem(b), b, crt.arg);
 
                     var compared;
                     if (!crt.comparer) {
@@ -2700,7 +2726,7 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
             this.broken = false;
             for (var i = 0, l = indices.length; i < l; ++i) {
                 var index = indices[i];
-                if (proc(it.getItem(data, index), index, arg) === false) {
+                if (proc(it.getItem(index), index, arg) === false) {
                     this.broken = true;
                     break;
                 }
