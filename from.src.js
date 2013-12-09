@@ -1330,7 +1330,7 @@ Iterable.prototype.singleOrDefault = function(pred, defValue, arg) {
 		defValue = pred;
 	}
 	else {
-		q = this.where(pred).take(2);
+		q = this.where(pred, arg).take(2);
 	}
 
 	var count = q.count();
