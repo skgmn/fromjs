@@ -1,0 +1,13 @@
+{
+    "name": "fromjs",
+    "description": "Powerful LINQ engine for JavaScript",
+    "version": "2.1.7",
+    "author": {
+        "name": "suckgamoni",
+        "email": "suckgamony@gmail.com"
+    },    
+    "dependencies": {
+    },
+    "main": "./from.js",
+    "homepage": "https://github.com/suckgamoni/fromjs",        
+}
