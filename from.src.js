@@ -1138,21 +1138,19 @@ Iterable.prototype.reverse = function() {
 
 Iterable.prototype.select = function(selector, arg0) {
 	var self = this;
-	var iterator;
 
 	var s;
 	if (typeof(selector) == "string") {
-		s = getCache("($_$$_a0)", selector);
+		s = getCache("replace/($,$$,@a0)", selector);
 		if (!s) {
-			s = "(" + lambdaReplace(selector, "$", "$$", "@a0") + ")";
-			putCache("($_$$_a0)", selector, s);
-		}
-	}
-	else {
+			s = "(" + lambdaReplace(selector, "$", "$$", "@.a0") + ")";
+			putCache("replace/($,$$,@a0)", selector, s);
+        }
+	} else {
 		s = "@s($,$$,@a0)";
 	}
 	
-	iterator = function(proc, arg) {
+	var iterator = function(proc, arg) {
 		if (typeof(proc) == "string") {
 		    var splited = [];
 			var hint = lambdaGetUseCount(proc, 3, splited);
@@ -1175,8 +1173,7 @@ Iterable.prototype.select = function(selector, arg0) {
 			list.push(lambdaJoin(splited, v, k, "@a"));
 
 			this.broken = self.each(list.join(","), {s: selector, a0: arg0, a: arg, i: 0}).broken;
-		}
-		else {
+		} else {
 			this.broken = self.each("@p(" + s + ",@i++,@a)", {s: selector, a0: arg0, a: arg, i: 0, p: proc}).broken;
 		}
 
