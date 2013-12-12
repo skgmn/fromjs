@@ -59,7 +59,7 @@ var defaultTrimmingTarget = [undefined, null, false, 0, ' ', '\n', '\t'];
 var defaultTrimmingPredicateArray = 'from(@t).contains($)';
 var defaultTrimmingPredicateIterable = '@t.contains($)';
 
-var CACHE_MAX = 16;
+var CACHE_EXPIRATION_TIME = 100;
 
 function isNumber(str) {
 	return /^[0-9]+$/.exec(str) ? true : false;
@@ -495,55 +495,36 @@ Grouper.prototype.$each = function(proc, arg) {
 // Cache
 //
 
-var cacheSlot = {};
-var cacheFifo = [];
+var cacheSlots = null;
 
-function getCacheSlot(name) {
-	var slot = cacheSlot[name];
-	if (!slot) {
-		slot = cacheSlot[name] = {};
-	}
-	
-	return slot;
+function getCache(name, str) {
+    if (!cacheSlots) return null;
+
+	var slot = cacheSlots[name];
+    if (slot) {
+        return slot[str];
+    } else {
+        return null;
+    }
 }
 
-var cache = {
-    get: function (name, str) {
-        var slot = getCacheSlot(name);
-        var result = slot[str];
-
-        if (result && cacheFifo.length > 2) {
-            for (var i = 0, l = cacheFifo.length; i < l; i += 2) {
-                if (cacheFifo[i] == name && cacheFifo[i + 1] == str) {
-                    cacheFifo.splice(i, 2);
-                    cacheFifo.push(name, str);
-                    break;
-                }
-            }
-        }
-        
-        return result;
-    },
-    
-    set: function (name, str, it) {
-        var slot = getCacheSlot(name);
-        
-        var added = !(str in slot);
+function putCache(name, str, it) {
+    if (!cacheSlots) {
+        var slot = {};
         slot[str] = it;
 
-        if (added) {
-            cacheFifo.push(name, str);
-            
-            var maxFifo = CACHE_MAX * 2;
-            while (cacheFifo.length > maxFifo) {
-                slot = cacheSlot[cacheFifo[0]];
-                delete slot[cacheFifo[1]];
-                
-                cacheFifo.splice(0, 2);
-            }
+        cacheSlots = {};
+        cacheSlots[name] = slot;
+
+        setTimeout(function() { cacheSlot = null; }, CACHE_EXPIRATION_TIME);
+    } else {
+        var slot = cacheSlots[name];
+        if (!slot) {
+            cacheSlots[name] = slot = {};
         }
+        slot[str] = it;
     }
-};
+}
 
 //
 // Iterable
@@ -559,10 +540,10 @@ Iterable.prototype.mutable = false;
 Iterable.prototype.where = function(pred, arg0) {
 	var pr;
 	if (typeof(pred) == "string") {
-		pr = cache.get("($_$$_a0)", pred);
+		pr = getCache("($_$$_a0)", pred);
 		if (!pr) {
 			pr = "(" + lambdaReplace(pred, "$", "$$", "@a0") + ")";
-			cache.set("($_$$_a0)", pred, pr);
+			putCache("($_$$_a0)", pred, pr);
 		}
 	}
 	else {
@@ -573,10 +554,10 @@ Iterable.prototype.where = function(pred, arg0) {
 	function it(proc, arg) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a)", proc);
+			p = getCache("($_$$_a)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a") + ")";
-				cache.set("($_$$_a)", proc, p);
+				putCache("($_$$_a)", proc, p);
 			}
 		}
 		else {
@@ -593,10 +574,10 @@ Iterable.prototype.where = function(pred, arg0) {
 Iterable.prototype.aggregate = function(seed, proc, arg) {
     var procStr;
     if (typeof(proc) == "string") {
-	    procStr = cache.get("(c_$_$$_a)", proc);
+	    procStr = getCache("(c_$_$$_a)", proc);
 	    if (!procStr) {
 		    procStr = "(" + lambdaReplace(proc, "@c", "$", "$$", "@a") + ")";
-		    cache.set("(c_$_$$_a)", proc, procStr);
+		    putCache("(c_$_$$_a)", proc, procStr);
 	    }
     }
     else {
@@ -617,10 +598,10 @@ Iterable.prototype.aggregate = function(seed, proc, arg) {
 Iterable.prototype.all = function(pred, arg) {
 	var p;
 	if (typeof(pred) == "string") {
-		p = cache.get("($_$$_a)", pred);
+		p = getCache("($_$$_a)", pred);
 		if (!p) {
 			p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			cache.set("($_$$_a)", pred, p);
+			putCache("($_$$_a)", pred, p);
 		}
 	}
 	else {
@@ -637,10 +618,10 @@ Iterable.prototype.any = function(pred, arg) {
 	} else {
 	    var p;
 	    if (typeof(pred) == "string") {
-		    p = cache.get("($_$$_a)", pred);
+		    p = getCache("($_$$_a)", pred);
 		    if (!p) {
 			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			    cache.set("($_$$_a)", pred, p);
+			    putCache("($_$$_a)", pred, p);
 		    }
 	    }
 	    else {
@@ -690,10 +671,10 @@ Iterable.prototype.contains = function(value, comparer, arg) {
 		c = "$==@v";
 	}
 	else if (typeof(comparer) == "string") {
-		c = cache.get("(v_$_a)", comparer);
+		c = getCache("(v_$_a)", comparer);
 		if (!c) {
 			c = "(" + lambdaReplace(comparer, "@v", "$", "@a") + ")";
-			cache.set("(v_$_a)", comparer, c);
+			putCache("(v_$_a)", comparer, c);
 		}
 	}
 	else {
@@ -713,10 +694,10 @@ Iterable.prototype.count = function(pred, arg) {
 	} else {
 	    var p;
 	    if (typeof(pred) == "string") {
-		    p = cache.get("($_$$_a)", pred);
+		    p = getCache("($_$$_a)", pred);
 		    if (!p) {
 			    p = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")";
-			    cache.set("($_$$_a)", pred, p);
+			    putCache("($_$$_a)", pred, p);
 		    }
 	    }
 	    else {
@@ -759,10 +740,10 @@ Iterable.prototype.distinct = function(comparer, arg) {
 	function it(proc, arg0) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a0)", proc);
+			p = getCache("($_$$_a0)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a0") + ")";
-				cache.set("($_$$_a0)", proc, p);
+				putCache("($_$$_a0)", proc, p);
 			}
 		}
 		else {
@@ -1161,10 +1142,10 @@ Iterable.prototype.select = function(selector, arg0) {
 
 	var s;
 	if (typeof(selector) == "string") {
-		s = cache.get("($_$$_a0)", selector);
+		s = getCache("($_$$_a0)", selector);
 		if (!s) {
 			s = "(" + lambdaReplace(selector, "$", "$$", "@a0") + ")";
-			cache.set("($_$$_a0)", selector, s);
+			putCache("($_$$_a0)", selector, s);
 		}
 	}
 	else {
@@ -1245,10 +1226,10 @@ Iterable.prototype.selectPair = function(valueSelector, keySelector, arg0) {
 	var vs, ks;
 
 	if (typeof(valueSelector) == "string") {
-		vs = cache.get("($_$$_a0)", valueSelector);
+		vs = getCache("($_$$_a0)", valueSelector);
 		if (!vs) {
 			vs = "(" + lambdaReplace(valueSelector, "$", "$$", "@a0") + ")";
-			cache.set("($_$$_a0)", valueSelector, vs);
+			putCache("($_$$_a0)", valueSelector, vs);
 		}
 	}
 	else {
@@ -1256,10 +1237,10 @@ Iterable.prototype.selectPair = function(valueSelector, keySelector, arg0) {
 	}
 
 	if (typeof(keySelector) == "string") {
-		ks = cache.get("($_$$_a0)", keySelector);
+		ks = getCache("($_$$_a0)", keySelector);
 		if (!ks) {
 			ks = "(" + lambdaReplace(keySelector, "$", "$$", "@a0") + ")";
-			cache.set("($_$$_a0)", keySelector, ks);
+			putCache("($_$$_a0)", keySelector, ks);
 		}
 	}
 	else {
@@ -1356,10 +1337,10 @@ Iterable.prototype.skip = function(count) {
 	function iterator(proc, arg) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a)", proc);
+			p = getCache("($_$$_a)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a") + ")";
-				cache.set("($_$$_a)", proc, p);
+				putCache("($_$$_a)", proc, p);
 			}
 		}
 		else {
@@ -1376,10 +1357,10 @@ Iterable.prototype.skip = function(count) {
 Iterable.prototype.skipWhile = function(pred, arg) {
 	var pr;
 	if (typeof(pred) == "string") {
-		pr = cache.get("($_$$_a)", pred);
+		pr = getCache("($_$$_a)", pred);
 		if (!pr) {
 			pr = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")"
-			cache.set("($_$$_a)", pred, pr);
+			putCache("($_$$_a)", pred, pr);
 		}
 	}
 	else {
@@ -1390,10 +1371,10 @@ Iterable.prototype.skipWhile = function(pred, arg) {
 	function iterator(proc, arg0) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a0)", proc);
+			p = getCache("($_$$_a0)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a0") + ")";
-				cache.set("($_$$_a0)", proc, p);
+				putCache("($_$$_a0)", proc, p);
 			}
 		}
 		else {
@@ -1422,10 +1403,10 @@ Iterable.prototype.take = function(count) {
 	function iterator(proc, arg) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a)", proc);
+			p = getCache("($_$$_a)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a") + ")";
-				cache.set("($_$$_a)", proc, p);
+				putCache("($_$$_a)", proc, p);
 			}
 		}
 		else {
@@ -1445,10 +1426,10 @@ Iterable.prototype.take = function(count) {
 Iterable.prototype.takeWhile = function(pred, arg) {
 	var pr;
 	if (typeof(pred) == "string") {
-		pr = cache.get("($_$$_a)", pred);
+		pr = getCache("($_$$_a)", pred);
 		if (!pr) {
 			pr = "(" + lambdaReplace(pred, "$", "$$", "@a") + ")"
-			cache.set("($_$$_a)", pred, pr);
+			putCache("($_$$_a)", pred, pr);
 		}
 	}
 	else {
@@ -1459,10 +1440,10 @@ Iterable.prototype.takeWhile = function(pred, arg) {
 	function iterator(proc, arg0) {
 		var p;
 		if (typeof(proc) == "string") {
-			p = cache.get("($_$$_a0)", proc);
+			p = getCache("($_$$_a0)", proc);
 			if (!p) {
 				p = "(" + lambdaReplace(proc, "$", "$$", "@a0") + ")";
-				cache.set("($_$$_a0)", proc, p);
+				putCache("($_$$_a0)", proc, p);
 			}
 		}
 		else {
@@ -1933,7 +1914,7 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
         }
 
         var dt = this.dataType + (this.rev ? '_reversed' : '');
-        var f = cache.get("each_" + dt, proc);
+        var f = getCache("each_" + dt, proc);
 
         if (!f) {
             var splited = [];
@@ -1964,7 +1945,7 @@ RandomAccessIterable.prototype.each = function(proc, _a) {
             f = new Function(alias, "s", "_l", "_s", "_e", "a", "_tl", "_tla", "_p",
                 ["var _b=true;for(;_s<_e;", srcIncrement, "){", i1, vars.decl,
                 "if((", lambdaJoin(splited, vars._v, i2, "a"), ")===false){return _b;}}return false;"].join(''));
-            cache.set("each_" + dt, proc, f);
+            putCache("each_" + dt, proc, f);
         }
 
         this.broken = f(from, data, data.length, region.start, region.end, _a, take, takeArg, p);
@@ -2315,7 +2296,7 @@ ObjectIterable.prototype.each = function(proc, _a) {
 		}
 	}
 	else {
-		var f = cache.get("each_o", proc);
+		var f = getCache("each_o", proc);
 		if (!f) {   
 		    var splited = [];
 			var hint = lambdaGetUseCount(proc, 3, splited);
@@ -2327,7 +2308,7 @@ ObjectIterable.prototype.each = function(proc, _a) {
 			}
 
 			f = new Function(alias, "d", "a", "for(var k in d){" + defV + "if((" + lambdaJoin(splited, v, "k", "a") + ")===false){return true;}}return false;");
-			cache.set("each_o", proc, f);
+			putCache("each_o", proc, f);
 		}
 
 		this.broken = f(from, _d, _a);
@@ -2365,7 +2346,7 @@ ObjectReversedIterable.prototype.each = function(proc, _a) {
 	}
 
 	if  (typeof(proc) == "string") {
-		var f = cache.get("each_or", proc);
+		var f = getCache("each_or", proc);
 		if (!f) {
 		    var splited = [];
 			var hint = lambdaGetUseCount(proc, 3, splited);
@@ -2382,7 +2363,7 @@ ObjectReversedIterable.prototype.each = function(proc, _a) {
 			}
 
 			f = new Function(alias, "r", "a", "for(var i=r.length/2;i>0;--i){var ii=(i-1)*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false){return true;}}return false;");
-			cache.set("each_or", proc, f);
+			putCache("each_or", proc, f);
 		}
 
 		this.broken = f(from, row, _a);
@@ -2505,7 +2486,7 @@ OrderedIterable.prototype.each = function(proc, arg) {
         indices.sort(sortfunction);
 
         if (typeof(proc) == "string") {
-            var f = cache.get("each_ordered_with_key", proc);
+            var f = getCache("each_ordered_with_key", proc);
             if (!f) {
                 if (!uses) {
                     splited = [];
@@ -2526,7 +2507,7 @@ OrderedIterable.prototype.each = function(proc, arg) {
 
                 f = new Function(alias, "l", "r", "a",
                     "for(var i=0,c=l.length;i<c;++i){var n=l[i]*2;" + defV + defK + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
-                cache.set("each_ordered_with_key", proc, f);
+                putCache("each_ordered_with_key", proc, f);
             }
             this.broken = f(from, indices, row, arg);
         }
@@ -2577,7 +2558,7 @@ OrderedIterable.prototype.iterateSortedWithoutKey = function(uses, splited, proc
     row.sort(sortfunction);
 
     if (typeof(proc) == "string") {
-        var f = cache.get("each_ordered_without_key", proc);
+        var f = getCache("each_ordered_without_key", proc);
         if (!f) {
             if (!uses) {
                 splited = [];
@@ -2593,7 +2574,7 @@ OrderedIterable.prototype.iterateSortedWithoutKey = function(uses, splited, proc
 
             f = new Function(alias, "r", 'a',
                 "for(var i=0,c=r.length;i<c;++i){" + defV + "if((" + lambdaJoin(splited, v, 'null', 'a') + ")===false)return true;}return false;");
-            cache.set("each_ordered_without_key", proc, f);
+            putCache("each_ordered_without_key", proc, f);
         }
         this.broken = f(from, row, arg);
     }
@@ -2671,7 +2652,7 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
         indices.sort(sortfunction);
 
         if (typeof(proc) == "string") {
-            var f = cache.get("each_ordered_random_access_with_key", proc);
+            var f = getCache("each_ordered_random_access_with_key", proc);
             if (!f) {
                 if (!uses) {
                     splited = [];
@@ -2692,7 +2673,7 @@ OrderedRandomAccessIterable.prototype.each = function(proc, arg) {
 
                 f = new Function(alias, "l", "r", "a",
                     "for(var i=0,c=l.length;i<c;++i){" + defK + defV + "if((" + lambdaJoin(splited, v, k, "a") + ")===false)return true;}return false;");
-                cache.set("each_ordered_random_access_with_key", proc, f);
+                putCache("each_ordered_random_access_with_key", proc, f);
             }
             this.broken = f(from, indices, data, arg);
         }
@@ -2736,7 +2717,7 @@ RegExpIterable.prototype.each = function (proc, arg) {
             proc = '_p($,$$,@)';
 	    }
 
-        var f = cache.get("each_regexp", proc);
+        var f = getCache("each_regexp", proc);
 
         if (!f) {
             var splited = [];
@@ -2753,7 +2734,7 @@ RegExpIterable.prototype.each = function (proc, arg) {
 
             f = new Function(alias, "_r", "_s", '_a', "_p",
                 ["var _m;for(", i1, ';_m=_r.exec(_s);', i2, "){if((", lambdaJoin(splited, '_m', '_i', "_a"), ")===false){return true;}}return false;"].join(''));
-            cache.set("each_regexp", proc, f);
+            putCache("each_regexp", proc, f);
         }
 
         this.broken = f(from, this._r, this._str, arg, p);
@@ -2836,10 +2817,10 @@ from.range = function(start, end, step) {
 	function iterator(proc, arg) {
 		if (typeof(proc) == "string") {
 			var cacheName = (step > 0 ? "each_ru" : "each_rd");
-			var f = cache.get(cacheName, proc);
+			var f = getCache(cacheName, proc);
 			if (!f) {
 				f = new Function("s", "e", "st", "a", "for(var i=s;i" + (step > 0 ? "<" : ">") + "e;i+=st){if((" + lambdaReplace(proc, "i", "i", "a") + ")===false)return true;}return false;");
-				cache.set(cacheName, proc, f);
+				putCache(cacheName, proc, f);
 			}
 
 			this.broken = f(start, end, step, arg);
@@ -2873,10 +2854,10 @@ from.range = function(start, end, step) {
 from.repeat = function(elem, count) {
 	function iterator(proc, arg) {
 		if (typeof(proc) == "string") {
-			var f = cache.get("each_rpt", proc);
+			var f = getCache("each_rpt", proc);
 			if (!f) {
 				f = new Function("c", "e", "a", "for(var i=0;i<c;++i){if((" + lambdaReplace(proc, "e", "i", "a") + ")===false)return true;}return false;");
-				cache.set("each_rpt", proc, f);
+				putCache("each_rpt", proc, f);
 			}
 
 			this.broken = f(count, elem, arg);
