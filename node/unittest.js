@@ -868,7 +868,17 @@ exports['singleOrDefault() test'] = function (test) {
     test.ok(fruit1 == 'passionfruit');
 
     var fruit2 = from(fruits).singleOrDefault("$length > 15", null);
-    test.ok(fruit2 ? false : true);
+    test.ok(!fruit2);
+
+    // test 3 (from issue #7)
+
+    var type = 'subst';
+    var filePaths = ['./lib/hangman/wordlists/adv.nor.wordlist.txt',
+                     './lib/hangman/wordlists/subst.nor.wordlist.txt'];
+
+    test.equal(
+        from(filePaths).singleOrDefault('$.indexOf(@) !== -1', null, '/subst.'),
+        filePaths[1]);
     
     test.done();
 };
